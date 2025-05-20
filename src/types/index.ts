@@ -12,6 +12,8 @@ export interface InventoryItem {
   description?: string
   supplier?: string
 }
+// En src/types.ts (o donde tengas tus tipos)
+export type Permission = 'admin' | 'cliente' | 'veterinario' | 'asistente' | 'appointments' | 'pets' | 'patients' | 'inventory' | 'purchases' | 'users';
 
 export interface Supplier {
   id: string

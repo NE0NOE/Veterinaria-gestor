@@ -6,9 +6,8 @@ import { Permission } from '../types';
 
 interface ProtectedRouteProps {
   requiredPermission?: Permission;
-  children?: React.ReactNode; // Allow wrapping components directly
+  children?: React.ReactNode;
 }
-
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredPermission, children }) => {
   const { isAuthenticated, user } = useAuth();
 

@@ -1,8 +1,17 @@
 import { RolePermissions, UserRole } from '../types';
 
-// Example permission configuration
 export const rolePermissions: RolePermissions = {
-  owner: ['dashboard', 'appointments', 'patients', 'medical-history', 'inventory', 'users', 'purchases', 'pets'],
+  owner: [
+    'dashboard',
+    'appointments',
+    'patients',
+    'medical-history',
+    'inventory',
+    'users',
+    'purchases',
+    'pets',
+    'admin' // 👈 AGREGÁ ESTA LÍNEA
+  ],
   veterinarian: ['dashboard', 'appointments', 'patients', 'medical-history', 'inventory', 'pets'],
   employee: ['appointments', 'inventory', 'purchases'],
   client: ['appointments', 'pets']
