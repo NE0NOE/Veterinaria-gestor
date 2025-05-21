@@ -104,36 +104,36 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ isOpen, onClose, onSave
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-semibold">{itemToEdit ? 'Editar Producto' : 'Nuevo Producto'}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+        <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+          <h2 className="text-xl font-semibold dark:text-gray-200">{itemToEdit ? 'Editar Producto' : 'Nuevo Producto'}</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
             <X size={24} />
           </button>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre del Producto</label>
               <input
                 type="text"
                 id="name"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400 dark:focus:ring-indigo-400 dark:focus:border-indigo-400 ${errors.name ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
               />
-              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+              {errors.name && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.name}</p>}
             </div>
 
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoría</label>
               <select
                 id="category"
                 name="category"
                 value={formData.category}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-gray-200 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"
               >
                 {categories.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
@@ -143,7 +143,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ isOpen, onClose, onSave
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad</label>
                 <input
                   type="number"
                   id="quantity"
@@ -151,12 +151,12 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ isOpen, onClose, onSave
                   value={formData.quantity}
                   onChange={handleChange}
                   min="0"
-                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${errors.quantity ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400 dark:focus:ring-indigo-400 dark:focus:border-indigo-400 ${errors.quantity ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
                 />
-                 {errors.quantity && <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>}
+                 {errors.quantity && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.quantity}</p>}
               </div>
               <div>
-                <label htmlFor="minimumQuantity" className="block text-sm font-medium text-gray-700 mb-1">Cantidad Mínima</label>
+                <label htmlFor="minimumQuantity" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad Mínima</label>
                 <input
                   type="number"
                   id="minimumQuantity"
@@ -164,38 +164,38 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ isOpen, onClose, onSave
                   value={formData.minimumQuantity}
                   onChange={handleChange}
                   min="0"
-                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${errors.minimumQuantity ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400 dark:focus:ring-indigo-400 dark:focus:border-indigo-400 ${errors.minimumQuantity ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
                 />
-                 {errors.minimumQuantity && <p className="text-red-500 text-xs mt-1">{errors.minimumQuantity}</p>}
+                 {errors.minimumQuantity && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.minimumQuantity}</p>}
               </div>
             </div>
 
             <div>
-              <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700 mb-1">Fecha de Vencimiento (Opcional)</label>
+              <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de Vencimiento (Opcional)</label>
               <input
                 type="date" // Use type="date" for better UX
                 id="expiryDate"
                 name="expiryDate"
                 value={formData.expiryDate}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${errors.expiryDate ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400 dark:focus:ring-indigo-400 dark:focus:border-indigo-400 ${errors.expiryDate ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
                 placeholder="AAAA-MM-DD"
               />
-               {errors.expiryDate && <p className="text-red-500 text-xs mt-1">{errors.expiryDate}</p>}
+               {errors.expiryDate && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.expiryDate}</p>}
             </div>
 
           </div>
-          <div className="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg">
+          <div className="flex justify-end p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-700 rounded-b-lg">
             <button
               type="button"
               onClick={onClose}
-              className="mr-2 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="mr-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Guardar
             </button>

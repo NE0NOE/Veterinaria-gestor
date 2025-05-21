@@ -101,12 +101,12 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose, order, o
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center border-b p-4">
-          <h3 className="text-lg font-semibold">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center border-b dark:border-gray-700 p-4">
+          <h3 className="text-lg font-semibold dark:text-gray-200">
             {order ? 'Editar Orden' : 'Nueva Orden de Compra'}
           </h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
             <X size={24} />
           </button>
         </div>
@@ -114,13 +114,13 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose, order, o
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Proveedor
               </label>
               <select
                 value={formData.supplierId}
                 onChange={(e) => setFormData({...formData, supplierId: e.target.value})}
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
                 required
               >
                 <option value="">Seleccionar proveedor</option>
@@ -133,21 +133,21 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose, order, o
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Fecha
               </label>
               <input
                 type="date"
                 value={formData.date}
                 onChange={(e) => setFormData({...formData, date: e.target.value})}
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Artículos
             </label>
             <div className="space-y-2">
@@ -157,7 +157,7 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose, order, o
                     <select
                       value={item.inventoryItemId}
                       onChange={(e) => updateItem(index, 'inventoryItemId', e.target.value)}
-                      className="w-full p-2 border rounded"
+                      className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
                       required
                     >
                       <option value="">Seleccionar artículo</option>
@@ -174,7 +174,7 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose, order, o
                       min="1"
                       value={item.quantity}
                       onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value))}
-                      className="w-full p-2 border rounded"
+                      className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
                       required
                     />
                   </div>
@@ -185,7 +185,7 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose, order, o
                       step="0.01"
                       value={item.unitPrice}
                       onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value))}
-                      className="w-full p-2 border rounded"
+                      className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
                       required
                     />
                   </div>
@@ -193,7 +193,7 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose, order, o
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
-                      className="text-red-500 hover:text-red-700"
+                      className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500"
                     >
                       <Minus size={18} />
                     </button>
@@ -203,7 +203,7 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose, order, o
               <button
                 type="button"
                 onClick={addItem}
-                className="flex items-center text-blue-600 hover:text-blue-800 text-sm mt-2"
+                className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm mt-2"
               >
                 <Plus size={16} className="mr-1" />
                 Agregar artículo
@@ -212,28 +212,28 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({ isOpen, onClose, order, o
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Notas
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({...formData, notes: e.target.value})}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
               rows={3}
             />
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4 border-t">
+          <div className="flex justify-end space-x-2 pt-4 border-t dark:border-gray-700">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border rounded text-gray-700 hover:bg-gray-100"
+              className="px-4 py-2 border dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
             >
               Guardar
             </button>

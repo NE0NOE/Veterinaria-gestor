@@ -17,36 +17,36 @@ const statusIcons = {
 
 const PurchaseCard: React.FC<PurchaseCardProps> = ({ order, onEdit, onDelete }) => {
   return (
-    <div className="bg-white rounded-lg shadow p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
       <div className="flex justify-between items-start mb-2">
-        <h3 className="font-semibold">Orden #{order.id.slice(0, 8)}</h3>
+        <h3 className="font-semibold dark:text-gray-200">Orden #{order.id.slice(0, 8)}</h3>
         <div className="flex items-center gap-1">
           {statusIcons[order.status]}
-          <span className="text-sm capitalize">{order.status}</span>
+          <span className="text-sm capitalize dark:text-gray-300">{order.status}</span>
         </div>
       </div>
       
-      <div className="text-sm text-gray-600 space-y-1">
+      <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
         <p>Proveedor: {order.supplierId.slice(0, 8)}...</p>
         <p>Fecha: {formatDate(order.date)}</p>
         <p className="flex items-center">
           <Package className="mr-1" size={14} />
           {order.items.length} items
         </p>
-        <p className="font-medium">Total: ${order.total.toFixed(2)}</p>
+        <p className="font-medium dark:text-gray-200">Total: ${order.total.toFixed(2)}</p>
       </div>
 
-      <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
+      <div className="flex justify-end gap-2 mt-3 pt-3 border-t dark:border-gray-700">
         <button 
           onClick={onEdit}
-          className="text-blue-600 hover:text-blue-800"
+          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
           title="Editar"
         >
           <Edit size={18} />
         </button>
         <button 
           onClick={onDelete}
-          className="text-red-600 hover:text-red-800"
+          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
           title="Eliminar"
         >
           <Trash2 size={18} />
