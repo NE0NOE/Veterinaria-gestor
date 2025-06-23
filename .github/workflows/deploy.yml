@@ -1,15 +1,44 @@
-- name: Deploy to EC2
+# Nombre del workflow, aparecerá en la pestaña "Actions"
+name: Deploy to EC2 on Push
+
+# Disparador: se ejecuta cada vez que hay un push a la rama 'main'
+on:
+  push:
+    branches:
+      - main
+
+# Trabajos que se van a ejecutar
+jobs:
+  deploy:
+    # El tipo de máquina virtual donde se ejecutará el workflow
+    runs-on: ubuntu-latest
+
+    # Pasos que componen el trabajo de despliegue
+    steps:
+      # Paso 1: Configurar la llave SSH para poder acceder a la EC2
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.EC2_SSH_KEY }}
+          known_hosts: 'just-a-placeholder'
+
+      # Paso 2: Añadir la huella digital del servidor EC2 para evitar preguntas interactivas
+      - name: Adding Known Hosts
+        run: ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      # Paso 3: Conectarse a la EC2 y ejecutar los comandos de despliegue
+      - name: Deploy to EC2
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             # Navega a la carpeta del proyecto
             cd ${{ secrets.PROJECT_PATH }}
             echo "✅ Navegué a $(pwd)"
 
-            # Descarga los últimos cambios
+            # Descarga los últimos cambios desde GitHub
             git pull origin main
             echo "✅ Código actualizado desde GitHub."
 
-            # Instala/actualiza las dependencias
+            # Instala/actualiza las dependencias de Node.js
             npm install
             echo "✅ Dependencias instaladas."
 
@@ -17,8 +46,7 @@
             npm run build
             echo "✅ Proyecto compilado con 'npm run build'."
 
-            # 'restart' es robusto: si la app está corriendo, la recarga;
-            # si se detuvo o dio error, la inicia de nuevo con el comando original.
+            # Reinicia la aplicación usando PM2
             pm2 restart veterinaria-app
             echo "✅ Aplicación reiniciada con PM2."
             
