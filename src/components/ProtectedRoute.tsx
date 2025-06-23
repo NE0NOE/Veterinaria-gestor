@@ -1,29 +1,31 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { hasPermission } from '../config/permissions';
-import { Permission } from '../types';
+// Importamos Permission desde el mismo lugar que hasPermission para asegurar la compatibilidad de tipos
+import { hasPermission, Permission } from '../config/permissions'; 
 
 interface ProtectedRouteProps {
   requiredPermission?: Permission;
   children?: React.ReactNode;
 }
+
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredPermission, children }) => {
   const { isAuthenticated, user } = useAuth();
 
   if (!isAuthenticated) {
-    // Redirect to login if not authenticated
+    // Redirigir al login si no está autenticado
     return <Navigate to="/login" replace />;
   }
 
+  // Si se requiere un permiso y el usuario no lo tiene
   if (requiredPermission && !hasPermission(user?.role ?? null, requiredPermission)) {
-    // Redirect to an unauthorized page or dashboard if permission is missing
-    // For now, redirecting to dashboard
-    console.warn(`User ${user?.username} (role: ${user?.role}) lacks permission: ${requiredPermission}`);
+    // Redirigir a una página no autorizada o al dashboard si falta el permiso
+    // Por ahora, redirigiendo a la raíz (LandingPage)
+    console.warn(`User ${user?.email} (role: ${user?.role}) lacks permission: ${requiredPermission}`); // Cambiado 'username' por 'email'
     return <Navigate to="/" replace />;
   }
 
-  // If authenticated and has permission (or no specific permission required), render the child route/component
+  // Si está autenticado y tiene permiso (o no se requiere permiso específico), renderizar la ruta/componente hijo
   return children ? <>{children}</> : <Outlet />;
 };
 

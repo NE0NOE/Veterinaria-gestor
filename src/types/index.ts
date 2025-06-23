@@ -43,3 +43,21 @@ export interface PurchaseOrder {
   createdAt: string
   updatedAt?: string
 }
+
+type Cita = {
+  id_cita: number;
+  fecha: string;
+  motivo: string;
+  estado: string;
+  mascotas: {
+    id_mascota: number;
+    nombre: string;
+    clientes: {
+      id_cliente: number;
+      nombre: string;
+    } | null;
+  }[];
+  veterinarios: {
+    nombre: string;
+  } | null;
+};

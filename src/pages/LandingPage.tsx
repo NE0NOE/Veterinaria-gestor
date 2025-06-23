@@ -15,8 +15,13 @@ const LandingPage = () => {
     AOS.init({ duration: 1000, once: true });
   }, []);
 
+  // Definimos el número de teléfono y el mensaje para WhatsApp
+  // NÚMERO DE WHATSAPP ACTUALIZADO AQUÍ
+  const whatsappNumber = '57660362'; // Tu número sin + ni espacios
+  const whatsappMessage = encodeURIComponent('¡Hola Max\'s Groomer! Estoy interesado en sus servicios y me gustaría hacer una consulta.'); // Mensaje codificado para URL
+
   return (
-    <div className="bg-gray-50">
+    <div className="bg-black text-white">
       <Navbar />
 
       {/* Hero principal */}
@@ -28,19 +33,19 @@ const LandingPage = () => {
           backgroundPosition: 'center',
         }}
       >
-        <div className="absolute inset-0 bg-black opacity-50"></div>
+        <div className="absolute inset-0 bg-black opacity-60"></div>
         <div className="relative z-10 px-4">
-          <h1 className="text-5xl font-extrabold mb-4 transition duration-500 transform hover:scale-105">
+          <h1 className="text-5xl font-extrabold mb-4 text-indigo-300 hover:scale-105 transition duration-500">
             Bienvenidos a Max's Groomer
           </h1>
-          <p className="text-xl">
+          <p className="text-xl text-gray-300">
             Tu clínica veterinaria de confianza en Rivas
           </p>
         </div>
       </section>
 
       {/* Sobre Nosotros */}
-      <section className="py-20 px-4 md:px-16 bg-white">
+      <section className="py-20 px-4 md:px-16 bg-gray-900 text-white">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div data-aos="fade-right" className="overflow-hidden rounded-lg shadow-lg">
             <img
@@ -50,11 +55,11 @@ const LandingPage = () => {
             />
           </div>
           <div data-aos="fade-left">
-            <h2 className="text-4xl font-extrabold text-gray-800 mb-4">Sobre Nosotros</h2>
-            <p className="text-gray-700 mb-4">
+            <h2 className="text-4xl font-extrabold text-indigo-400 mb-4">Sobre Nosotros</h2>
+            <p className="text-gray-300 mb-4">
               En Max's Groomer, nos dedicamos al cuidado integral de las mascotas. Fundada hace más de ocho años en Rivas, Nicaragua, nuestra clínica combina tradición y modernidad para ofrecer atención veterinaria de alta calidad.
             </p>
-            <p className="text-gray-700">
+            <p className="text-gray-300">
               Nuestro equipo, comprometido y cercano, se esfuerza por brindar servicios de grooming y citas veterinarias, siempre con el cariño y profesionalismo que tu mascota merece.
             </p>
           </div>
@@ -62,9 +67,9 @@ const LandingPage = () => {
       </section>
 
       {/* Servicios */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-black text-white">
         <div className="max-w-6xl mx-auto px-4 md:px-16">
-          <h2 className="text-4xl font-extrabold text-center text-gray-800 mb-16" data-aos="fade-up">
+          <h2 className="text-4xl font-extrabold text-center text-indigo-300 mb-16" data-aos="fade-up">
             Nuestros Servicios
           </h2>
           <div className="grid md:grid-cols-2 gap-12">
@@ -76,8 +81,8 @@ const LandingPage = () => {
                   className="w-full h-full object-cover"
                 />
               </div>
-              <h3 className="text-2xl font-semibold mb-2">Grooming</h3>
-              <p className="text-gray-600">
+              <h3 className="text-2xl font-semibold text-indigo-400 mb-2">Grooming</h3>
+              <p className="text-gray-400">
                 Ofrecemos servicios de estética y aseo para que tu mascota luzca siempre radiante.
               </p>
             </div>
@@ -89,8 +94,8 @@ const LandingPage = () => {
                   className="w-full h-full object-cover"
                 />
               </div>
-              <h3 className="text-2xl font-semibold mb-2">Citas Veterinarias</h3>
-              <p className="text-gray-600">
+              <h3 className="text-2xl font-semibold text-indigo-400 mb-2">Citas Veterinarias</h3>
+              <p className="text-gray-400">
                 Agenda una consulta con nuestros expertos para asegurar el bienestar de tu compañero.
               </p>
             </div>
@@ -98,44 +103,43 @@ const LandingPage = () => {
         </div>
       </section>
 
-      <section className="py-16 bg-gray-50">
-  <div className="max-w-6xl mx-auto text-center">
-    <h2 className="text-4xl font-extrabold text-gray-800 mb-8">Alimentación Purina</h2>
-    
-    <div className="flex justify-center mb-6">
-      <img src={purinaLogo} alt="Purina Logo" className="h-20" />
-    </div>
-    
-    <motion.p
-      className="text-lg text-gray-600 mb-8"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 1, delay: 0.3 }}
-    >
-      Ofrecemos productos Purina Pro Plan, diseñados para satisfacer las necesidades nutricionales de tu mascota. 
-      <strong> Descubre la mejor nutrición para tu compañero peludo.</strong>
-    </motion.p>
+      {/* Alimentación Purina */}
+      <section className="py-16 bg-indigo-950">
+        <div className="max-w-6xl mx-auto text-center">
+          <h2 className="text-4xl font-extrabold text-indigo-200 mb-8">Alimentación Purina</h2>
 
-    {/* Botón aquí 👇 */}
-    <Link
-      to="/calculadora-alimentos"
-      className="inline-flex items-center px-8 py-3 border border-transparent text-sm font-medium rounded-full text-white bg-red-600 hover:bg-red-700 transition-all duration-300"
-    >
-      ¡Calcula la Ración Ideal!
-    </Link>
-  </div>
-</section>
+          <div className="flex justify-center mb-6">
+            <img src={purinaLogo} alt="Purina Logo" className="h-20" />
+          </div>
 
+          <motion.p
+            className="text-lg text-gray-300 mb-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1, delay: 0.3 }}
+          >
+            Ofrecemos productos Purina Pro Plan, diseñados para satisfacer las necesidades nutricionales de tu mascota.{' '}
+            <strong className="text-white">Descubre la mejor nutrición para tu compañero peludo.</strong>
+          </motion.p>
+
+          <Link
+            to="/calculadora-alimentos"
+            className="inline-flex items-center px-8 py-3 border border-transparent text-sm font-medium rounded-full text-white bg-red-600 hover:bg-red-700 transition-all duration-300"
+          >
+            ¡Calcula la Ración Ideal!
+          </Link>
+        </div>
+      </section>
 
       {/* Ubicación */}
-      <section className="py-20 px-4 md:px-16 bg-gray-100">
+      <section className="py-20 px-4 md:px-16 bg-black text-white">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div data-aos="fade-right">
-            <h2 className="text-4xl font-extrabold text-gray-800 mb-4">Nuestra Ubicación</h2>
-            <p className="text-gray-700 mb-4">
+            <h2 className="text-4xl font-extrabold text-indigo-400 mb-4">Nuestra Ubicación</h2>
+            <p className="text-gray-300 mb-4">
               Nos encontramos en el corazón de Rivas, Nicaragua, frente a la Farmacia "San Francisco".
             </p>
-            <p className="text-gray-700">
+            <p className="text-gray-300">
               ¡Estamos listos para cuidar a tu compañero peludo con el cariño y la dedicación que se merece!
             </p>
           </div>
@@ -154,15 +158,25 @@ const LandingPage = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-10 mt-16">
+      <footer className="bg-gray-950 text-white py-10 mt-16">
         <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-3 gap-8 text-sm text-gray-300">
           <div>
             <h4 className="font-semibold text-white mb-2">Dirección</h4>
-            <p>Coloca aquí la dirección de la clínica</p>
+            <p>Del portón principal de la uniav, 2 cuadras al sur, media al lago</p>
           </div>
           <div>
             <h4 className="font-semibold text-white mb-2">Contacto</h4>
-            <p>Teléfono: (000) 0000-0000</p>
+            <p>
+              Teléfono:{' '}
+              <a
+                href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 transition-colors duration-200"
+              >
+                (505)5766-0362 {/* El texto visible puede seguir siendo formateado, pero el número en la URL es crucial */}
+              </a>
+            </p>
             <p>Email: contacto@maxsgroomer.com</p>
           </div>
           <div>
@@ -179,4 +193,3 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
-

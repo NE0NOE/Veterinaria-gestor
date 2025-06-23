@@ -44,12 +44,13 @@ const Register: React.FC = () => {
     });
 
     if (signupError || !authData.user) {
-      setError('Hubo un error al registrar el usuario.');
+      setError('Hubo un error al registrar el usuario: ' + signupError?.message || 'Error desconocido.');
       return;
     }
 
     const user = authData.user;
 
+    // Insertar en la tabla 'users'
     const { error: userInsertError } = await supabase.from('users').insert({
       id_user: user.id,
       nombre: form.name,
@@ -60,10 +61,12 @@ const Register: React.FC = () => {
     });
 
     if (userInsertError) {
-      setError('No se pudo guardar los datos del usuario.');
+      console.error('Error al insertar en la tabla users:', userInsertError);
+      setError('No se pudo guardar los datos del usuario en la tabla principal. ' + userInsertError.message);
       return;
     }
 
+    // Insertar en la tabla 'clientes'
     const { error: clientInsertError } = await supabase.from('clientes').insert({
       id_user: user.id,
       nombre: form.name,
@@ -75,10 +78,12 @@ const Register: React.FC = () => {
     });
 
     if (clientInsertError) {
-      setError('No se pudo agregar el usuario a la tabla de clientes.');
+      console.error('Error al insertar en la tabla clientes:', clientInsertError);
+      setError('No se pudo agregar el usuario a la tabla de clientes. ' + clientInsertError.message);
       return;
     }
 
+    // Obtener el ID del rol 'cliente'
     const { data: rolData, error: rolError } = await supabase
       .from('roles')
       .select('id_rol')
@@ -86,20 +91,24 @@ const Register: React.FC = () => {
       .single();
 
     if (rolError || !rolData) {
-      setError('Rol de cliente no encontrado.');
+      console.error('Error al obtener el rol de cliente:', rolError);
+      setError('Rol de cliente no encontrado o error al obtenerlo. ' + rolError?.message);
       return;
     }
 
+    // Asignar el rol al usuario
     const { error: rolInsertError } = await supabase.from('user_roles').insert({
       id_user: user.id,
       id_rol: rolData.id_rol,
     });
 
     if (rolInsertError) {
-      setError('No se pudo asignar el rol.');
+      console.error('Error al asignar el rol:', rolInsertError);
+      setError('No se pudo asignar el rol al usuario. ' + rolInsertError.message);
       return;
     }
 
+    // Si todo fue exitoso, redirigir al login
     navigate('/login');
   };
 

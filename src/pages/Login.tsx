@@ -1,9 +1,9 @@
-import { useAuth } from '../context/AuthContext';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import { PawPrint, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '../context/AuthContext'; // Importa el AuthContext actualizado
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -12,6 +12,39 @@ const Login: React.FC = () => {
   const [capsLock, setCapsLock] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+
+  // Redirigir si ya está autenticado y el rol está definido
+  useEffect(() => {
+    console.log("Login useEffect: authLoading:", authLoading, "isAuthenticated:", isAuthenticated, "user:", user); // Log para depuración
+    if (!authLoading && isAuthenticated && user?.role) {
+      console.log("Login useEffect: User already authenticated and role defined, redirecting based on role:", user.role);
+      switch (user.role) {
+        case 'cliente':
+          navigate('/dashboard');
+          break;
+        case 'admin':
+          navigate('/admin-dashboard');
+          break;
+        case 'veterinario':
+          navigate('/veterinario-dashboard');
+          break;
+        case 'asistente':
+          navigate('/asistente-dashboard');
+          break;
+        default:
+          console.warn(`Login useEffect: Rol no reconocido para redirección: ${user.role}`);
+          navigate('/'); // O a una página de error/default
+          break;
+      }
+    } else if (!authLoading && isAuthenticated && !user?.role) {
+        console.warn("Login useEffect: User is authenticated but role is not defined. Cannot redirect based on role.");
+        // Podrías redirigir a una página de "espera de asignación de rol" o mostrar un mensaje aquí.
+    } else if (!authLoading && !isAuthenticated) {
+        console.log("Login useEffect: Not authenticated, staying on login page.");
+    }
+  }, [isAuthenticated, user, authLoading, navigate]);
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,81 +55,49 @@ const Login: React.FC = () => {
       return;
     }
 
-    let emailToLogin = '';
-    const isEmail = username.includes('@');
+    let emailToLogin = username; // Asumimos que el username es el email por defecto
 
-    if (isEmail) {
-      emailToLogin = username;
-    } else {
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('nombre', username)
-        .single();
+    // Si el username no es un email, búscalo en la tabla 'users' para obtener el email
+    if (!username.includes('@')) {
+      try {
+        console.log('Login: Buscando email por nombre de usuario:', username);
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('email')
+          .eq('nombre', username)
+          .single();
 
-      if (userError || !userData) {
-        setError('Usuario no encontrado.');
+        if (userError || !userData) {
+          setError('Usuario no encontrado o error al buscar el email.');
+          console.error('Login: Error fetching user email by name:', userError);
+          return;
+        }
+        emailToLogin = userData.email;
+        console.log('Login: Email encontrado para el usuario:', emailToLogin);
+      } catch (err: any) {
+        console.error('Login: Error al buscar email por nombre de usuario:', err.message);
+        setError('Error al procesar el usuario. Intenta con tu correo electrónico.');
         return;
       }
-
-      emailToLogin = userData.email;
     }
 
-    const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({
+    // Intenta iniciar sesión con Supabase Auth
+    console.log('Login: Intentando iniciar sesión con email:', emailToLogin);
+    const { error: loginError } = await supabase.auth.signInWithPassword({
       email: emailToLogin,
       password,
     });
 
-    if (loginError || !authData.user) {
-      console.error('Error de login:', loginError?.message);
-      setError('Credenciales inválidas.');
+    if (loginError) {
+      console.error('Login: Error de login en Supabase:', loginError.message);
+      setError('Credenciales inválidas. Verifica tu correo/usuario y contraseña.');
       return;
     }
 
-    const userId = authData.user.id;
-
-    const { data: userRoleData, error: userRoleError } = await supabase
-      .from('user_roles')
-      .select('id_rol')
-      .eq('id_user', userId)
-      .single();
-
-    if (userRoleError || !userRoleData) {
-      setError('Rol no asignado al usuario.');
-      return;
-    }
-
-    const { data: roleNameData, error: roleNameError } = await supabase
-      .from('roles')
-      .select('nombre')
-      .eq('id_rol', userRoleData.id_rol)
-      .single();
-
-    if (roleNameError || !roleNameData) {
-      setError('No se pudo obtener el nombre del rol.');
-      return;
-    }
-
-    const rol = roleNameData.nombre?.toLowerCase().trim();
-    console.log('ROL ASIGNADO AL USUARIO:', rol);
-
-    switch (rol) {
-      case 'cliente':
-        navigate('/dashboard');
-        break;
-      case 'admin':
-        navigate('/admin-dashboard');
-        break;
-      case 'veterinario':
-        navigate('/veterinario-dashboard');
-        break;
-      case 'asistente':
-        navigate('/asistente-dashboard');
-        break;
-      default:
-        setError(`Rol no reconocido: ${rol}`);
-        break;
-    }
+    console.log('Login: Inicio de sesión de Supabase exitoso. AuthContext se encargará de la redirección.');
+    // Si el login es exitoso, el useEffect de AuthProvider detectará el cambio
+    // y actualizará el estado global del usuario, lo que a su vez activará
+    // la redirección en el useEffect de este componente.
   };
 
   return (
