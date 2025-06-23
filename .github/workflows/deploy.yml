@@ -1,54 +1,42 @@
-# Nombre del workflow, aparecerá en la pestaña "Actions"
-name: Deploy to EC2 on Push
+name: Deploy to EC2 (Public Repo)
 
-# Disparador: se ejecuta cada vez que hay un push a la rama 'main'
 on:
   push:
     branches:
       - main
 
-# Trabajos que se van a ejecutar
 jobs:
   deploy:
-    # El tipo de máquina virtual donde se ejecutará el workflow
     runs-on: ubuntu-latest
 
-    # Pasos que componen el trabajo de despliegue
     steps:
-      # Paso 1: Configurar la llave SSH para poder acceder a la EC2
-      - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.EC2_SSH_KEY }}
-          known_hosts: 'just-a-placeholder'
-
-      # Paso 2: Añadir la huella digital del servidor EC2 para evitar preguntas interactivas
-      - name: Adding Known Hosts
-        run: ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-
-      # Paso 3: Conectarse a la EC2 y ejecutar los comandos de despliegue
       - name: Deploy to EC2
-        run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            # Navega a la carpeta del proyecto
-            cd ${{ secrets.PROJECT_PATH }}
-            echo "✅ Navegué a $(pwd)"
-
-            # Descarga los últimos cambios desde GitHub
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Navegamos a la carpeta del proyecto
+            cd /home/ec2-user/veterinaria
+            
+            # Traemos los últimos cambios
             git pull origin main
-            echo "✅ Código actualizado desde GitHub."
-
-            # Instala/actualiza las dependencias de Node.js
+            echo "✅ Código actualizado."
+            
+            # Instalamos dependencias
             npm install
             echo "✅ Dependencias instaladas."
-
-            # Compila la aplicación para producción
-            npm run build
-            echo "✅ Proyecto compilado con 'npm run build'."
-
-            # Reinicia la aplicación usando PM2
-            pm2 restart veterinaria-app
-            echo "✅ Aplicación reiniciada con PM2."
             
+            # --- COMANDO CLAVE AÑADIDO ---
+            # Arreglamos el permiso de ejecución de Vite por si acaso
+            chmod +x ./node_modules/.bin/vite
+            echo "✅ Permisos de Vite corregidos."
+            
+            # Re-construimos el proyecto con los nuevos cambios
+            npm run build
+            echo "✅ Proyecto compilado."
+            
+            # Reiniciamos la aplicación con PM2
+            pm2 restart veterinaria-app
             echo "🚀 Despliegue completado."
-          EOF
