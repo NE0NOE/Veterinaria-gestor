@@ -148,7 +148,7 @@ const AdminDashboardLayout = () => {
             </NavLink>
 
             <NavLink
-              to="/admin-dashboard/agregar-usuario"
+              to="/admin-dashboard/ver-usuarios"
               className={({ isActive }) =>
                 `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out 
                 ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`

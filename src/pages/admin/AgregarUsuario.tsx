@@ -1,13 +1,18 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase } from '../../supabaseClient';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { supabase } from '../../supabaseClient.ts'; // Asegúrate de que esta ruta sea correcta
+import { useNavigate } from 'react-router-dom';
 import {
-  User, UserPlus, Edit, Trash2, Loader2, AlertCircle, CheckCircle, XCircle,
-  Briefcase, Stethoscope, Search, ChevronLeft, ChevronRight, Ban, Eye
+  User, UserPlus, Edit, Trash2, Loader2, AlertCircle, CheckCircle,
+  Briefcase, Stethoscope, Search, ChevronLeft, ChevronRight, Ban, RotateCcw
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext'; // Tu AuthContext existente
 
-// --- Definiciones de Tipos ---
+// Definiciones de Tipos
+interface Role {
+  id_rol: number;
+  nombre: string;
+}
 
-// Tipo para un usuario en la tabla 'public.users'
 interface UserDB {
   id_user: string;
   nombre: string;
@@ -17,39 +22,22 @@ interface UserDB {
   creado_en: string; // ISO string
 }
 
-// Tipo para un rol en la tabla 'public.roles'
-interface Role {
-  id_rol: number;
-  nombre: string;
-}
-
-// Tipo para la tabla pivote 'public.user_roles'
-interface UserRole {
-  id_user: string;
-  id_rol: number;
-}
-
-// Tipo para un veterinario en la tabla 'public.veterinarios'
-interface Veterinario {
-  id_veterinario: number; // PK de la tabla veterinarios, no es el id_user
-  id_user: string; // FK al id_user de auth.users y public.users
-  nombre: string;
-  especialidad: string | null;
-  telefono: string | null;
-  email: string | null;
-}
-
-// Tipo combinado para mostrar en la tabla de empleados
 interface Employee extends UserDB {
   id_rol: number;
   nombre_rol: string;
   especialidad?: string | null; // Opcional, solo para veterinarios
+  // Si deseas mostrar citas asignadas/mascotas registradas aquí,
+  // ajusta esta interfaz y la lógica de fetchEmployees.
 }
 
 const GestionEmpleadosAdmin: React.FC = () => {
+  const navigate = useNavigate();
+  // Usamos el AuthContext tal cual lo tienes, con sus propios estados de `loading` y `userRole`
+  const { userRole, loading: authLoading, session, user } = useAuth(); 
+
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [componentLoading, setComponentLoading] = useState(true); // Carga interna de este componente
+  const [roles, setRoles] = useState<Role[]>([]); // Roles para el select
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -65,7 +53,7 @@ const GestionEmpleadosAdmin: React.FC = () => {
     email: '',
     telefono: '',
     password: '', // Solo para agregar, o para resetear contraseña en edición
-    id_rol: '',
+    id_rol: 0, 
     especialidad: '', // Solo para veterinarios
     activo: true, // Solo para edición
   });
@@ -74,182 +62,164 @@ const GestionEmpleadosAdmin: React.FC = () => {
 
   // Estados para búsqueda y paginación
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState('');
+  const [filterRole, setFilterRole] = useState(''); 
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  /**
-   * Muestra un mensaje de éxito que desaparece después de un tiempo.
-   * @param message El mensaje de éxito a mostrar.
-   */
-  const showSuccess = useCallback((message: string) => {
-    setSuccess(message);
-    setError(null);
-    setTimeout(() => setSuccess(null), 5000);
+  const showMessage = useCallback((type: 'success' | 'error', message: string) => {
+    if (type === 'success') {
+      setSuccess(message);
+      setError(null);
+    } else {
+      setError(message);
+      setSuccess(null);
+    }
+    setTimeout(() => {
+      setSuccess(null);
+      setError(null);
+    }, 5000); // Mensajes desaparecen después de 5 segundos
   }, []);
 
-  /**
-   * Muestra un mensaje de error que desaparece después de un tiempo.
-   * @param message El mensaje de error a mostrar.
-   */
-  const showError = useCallback((message: string) => {
-    setError(message);
-    setSuccess(null);
-    setTimeout(() => setError(null), 8000);
-  }, []);
-
-  /**
-   * Limpia los mensajes de éxito y error.
-   */
   const clearMessages = useCallback(() => {
     setSuccess(null);
     setError(null);
   }, []);
 
   /**
-   * Carga los roles disponibles desde la base de datos, excluyendo 'cliente'.
+   * Carga los roles disponibles desde la base de datos, excluyendo 'cliente' en el select para el admin.
    */
   const fetchRoles = useCallback(async () => {
-    const { data, error: rolesError } = await supabase
-      .from('roles')
-      .select('id_rol, nombre')
-      .neq('nombre', 'cliente'); // Excluir el rol 'cliente'
+    try {
+      const { data, error: rolesError } = await supabase
+        .from('roles')
+        .select('id_rol, nombre')
+        .in('nombre', ['admin', 'asistente', 'veterinario']); // Filtrar solo roles de empleados
 
-    if (rolesError) {
-      console.error('Error fetching roles:', rolesError.message);
-      showError('Error al cargar los roles disponibles.');
-    } else {
+      if (rolesError) throw rolesError;
       setRoles(data || []);
+    } catch (err: any) {
+      console.error('Error fetching roles:', err.message);
+      showMessage('error', 'Error al cargar los roles disponibles: ' + err.message);
     }
-  }, [showError]);
+  }, [showMessage]);
 
   /**
    * Carga la lista de empleados (usuarios con rol que no sea 'cliente')
-   * combinando datos de auth.users, public.users, public.user_roles y public.veterinarios.
+   * combinando datos de public.users, public.user_roles y public.veterinarios.
    */
   const fetchEmployees = useCallback(async () => {
-    setLoading(true);
+    setComponentLoading(true); // Activa la carga interna del componente
     clearMessages();
     try {
       // 1. Obtener los roles de empleados (admin, asistente, veterinario)
       const { data: employeeRolesData, error: rolesError } = await supabase
         .from('roles')
         .select('id_rol, nombre')
-        .in('nombre', ['administrador', 'asistente', 'veterinario']); // Filtrar solo roles de empleados
+        .in('nombre', ['admin', 'asistente', 'veterinario']); // Filtrar solo roles de empleados
 
       if (rolesError) throw rolesError;
+
       const employeeRoleIds = employeeRolesData.map(role => role.id_rol);
       const roleMap = new Map(employeeRolesData.map(role => [role.id_rol, role.nombre]));
 
       // 2. Obtener usuarios de public.users que tienen uno de estos roles
-      const { data: userRolesData, error: userRolesError } = await supabase
-        .from('user_roles')
-        .select('id_user, id_rol')
-        .in('id_rol', employeeRoleIds); // Filtrar por los IDs de roles de empleado
-
-      if (userRolesError) throw userRolesError;
-      const employeeUserIds = userRolesData.map(ur => ur.id_user);
-      const userRoleMap = new Map(userRolesData.map(ur => [ur.id_user, ur.id_rol]));
-
-      // 3. Obtener los detalles de esos usuarios de public.users
+      // JOIN con user_roles y roles para obtener el rol_nombre directamente
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('*')
-        .in('id_user', employeeUserIds); // Filtrar por los IDs de usuario con rol de empleado
+        .select(`
+          id_user,
+          nombre,
+          email,
+          telefono,
+          activo,
+          creado_en,
+          user_roles(id_rol, roles(nombre))
+        `)
+        .in('user_roles.id_rol', employeeRoleIds); // Filtrar por los IDs de roles de empleado
 
       if (usersError) throw usersError;
 
-      // 4. Obtener los detalles de veterinarios si aplica
+      // 3. Obtener los detalles de veterinarios si aplica
       const { data: vetsData, error: vetsError } = await supabase
         .from('veterinarios')
-        .select('id_user, especialidad');
+        .select('id_user, especialidad, id_veterinario'); 
+      if (vetsError) console.warn('Error fetching vets data (optional):', vetsError.message);
 
-      if (vetsError) throw vetsError;
-      const vetMap = new Map(vetsData.map(vet => [vet.id_user, vet.especialidad]));
+      const vetMap = new Map(vetsData?.map(vet => [vet.id_user, { especialidad: vet.especialidad, id_veterinario: vet.id_veterinario }]) || []);
 
-      // 5. Combinar todos los datos
-      const combinedEmployees: Employee[] = usersData.map(user => {
-        const id_rol = userRoleMap.get(user.id_user) || 0; // Fallback a 0 si no se encuentra (debería existir)
-        const nombre_rol = roleMap.get(id_rol) || 'Desconocido';
-        const especialidad = (nombre_rol === 'veterinario') ? vetMap.get(user.id_user) : null;
+      // 4. Combinar todos los datos
+      const combinedEmployees: Employee[] = usersData.map(userItem => { // Renombrado user a userItem para evitar conflicto
+        const userRoleEntry = Array.isArray(userItem.user_roles) ? userItem.user_roles[0] : userItem.user_roles;
+        const id_rol = userRoleEntry?.id_rol || 0;
+        const nombre_rol = (userRoleEntry?.roles as { nombre: string })?.nombre || 'Desconocido';
 
-        return {
-          ...user,
-          id_rol,
-          nombre_rol,
-          especialidad,
+        const employee: Employee = {
+          id_user: userItem.id_user,
+          nombre: userItem.nombre,
+          email: userItem.email,
+          telefono: userItem.telefono,
+          activo: userItem.activo,
+          creado_en: userItem.creado_en,
+          id_rol: id_rol,
+          nombre_rol: nombre_rol,
         };
+
+        if (nombre_rol.toLowerCase() === 'veterinario') {
+          const vetDetails = vetMap.get(userItem.id_user);
+          if (vetDetails) {
+            employee.especialidad = vetDetails.especialidad;
+          }
+        }
+        return employee;
       });
 
       setEmployees(combinedEmployees);
 
     } catch (err: any) {
       console.error('Error fetching employees:', err.message);
-      showError('Error al cargar la lista de empleados: ' + err.message);
+      showMessage('error', 'Error al cargar la lista de empleados: ' + err.message);
     } finally {
-      setLoading(false);
+      setComponentLoading(false); // Desactiva la carga interna del componente
     }
-  }, [showError, clearMessages]);
+  }, [showMessage, clearMessages]);
 
   useEffect(() => {
-    fetchRoles();
-    fetchEmployees();
+    // Si authLoading es false Y userRole es 'admin', entonces cargamos los empleados
+    // Esto se disparará una vez que AuthContext haya resuelto el rol a 'admin'
+    if (!authLoading && userRole === 'admin') {
+      fetchRoles();
+      fetchEmployees();
+      // Nota: Si quieres Realtime, descomenta las suscripciones aquí.
+      // Actualmente, la actualización es manual con el botón o después de Add/Edit/Delete.
+    }
 
-    // Configurar suscripciones en tiempo real
-    const usersChannel = supabase
-      .channel('public:users')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
-        console.log('Realtime change in public.users');
-        fetchEmployees();
-      })
-      .subscribe();
+    // Redirigir si AuthContext terminó de cargar (authLoading es false) y el rol NO es admin.
+    // Esto es crucial para el comportamiento de tu AuthContext, que podría dar un userRole `undefined`
+    // inicialmente pero luego resolverlo. SOLO redirigimos si el rol NO ES 'admin' DESPUÉS de la carga de Auth.
+    if (!authLoading && userRole !== 'admin') {
+        console.warn(`[GestionEmpleadosAdmin] Acceso Denegado. userRole: ${userRole}. Redirigiendo a /login.`);
+        navigate('/login');
+    }
+  }, [fetchRoles, fetchEmployees, authLoading, userRole, navigate]); // Dependencias
 
-    const userRolesChannel = supabase
-      .channel('public:user_roles')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
-        console.log('Realtime change in public.user_roles');
-        fetchEmployees();
-      })
-      .subscribe();
-
-    const veterinariosChannel = supabase
-      .channel('public:veterinarios')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'veterinarios' }, () => {
-        console.log('Realtime change in public.veterinarios');
-        fetchEmployees();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(usersChannel);
-      supabase.removeChannel(userRolesChannel);
-      supabase.removeChannel(veterinariosChannel);
-      console.log('Unsubscribed from employee management channels.');
-    };
-  }, [fetchRoles, fetchEmployees]); // Dependencias para re-suscribirse si cambian las funciones
-
-  /**
-   * Maneja los cambios en los campos del formulario.
-   */
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
+
     if (type === 'checkbox') {
       setFormFields((prev) => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
     } else {
       setFormFields((prev) => ({ ...prev, [name]: value }));
     }
-    // Actualizar especialidad si el rol cambia a/de veterinario
+
     if (name === 'id_rol') {
-      const selectedRole = roles.find(r => r.id_rol.toString() === value);
+      const selectedRole = roles.find(r => r.id_rol === Number(value)); // Convertir a Number
       if (selectedRole?.nombre.toLowerCase() !== 'veterinario') {
         setFormFields((prev) => ({ ...prev, especialidad: '' }));
       }
     }
   };
 
-  /**
-   * Abre el modal de agregar usuario y resetea el formulario.
-   */
   const openAddModal = () => {
     setFormFields({
       id_user: '',
@@ -257,7 +227,7 @@ const GestionEmpleadosAdmin: React.FC = () => {
       email: '',
       telefono: '',
       password: '',
-      id_rol: '',
+      id_rol: 0,
       especialidad: '',
       activo: true,
     });
@@ -265,10 +235,6 @@ const GestionEmpleadosAdmin: React.FC = () => {
     setShowAddModal(true);
   };
 
-  /**
-   * Abre el modal de edición con los datos del empleado seleccionado.
-   * @param employee El empleado a editar.
-   */
   const openEditModal = (employee: Employee) => {
     setCurrentEmployee(employee);
     setFormFields({
@@ -277,7 +243,7 @@ const GestionEmpleadosAdmin: React.FC = () => {
       email: employee.email,
       telefono: employee.telefono || '',
       password: '', // La contraseña no se edita directamente así, solo se puede resetear
-      id_rol: employee.id_rol.toString(),
+      id_rol: employee.id_rol,
       especialidad: employee.especialidad || '',
       activo: employee.activo,
     });
@@ -285,148 +251,95 @@ const GestionEmpleadosAdmin: React.FC = () => {
     setShowEditModal(true);
   };
 
-  /**
-   * Abre el modal de confirmación de eliminación.
-   * @param employee El empleado a eliminar.
-   */
   const openDeleteConfirmModal = (employee: Employee) => {
     setCurrentEmployee(employee);
     clearMessages();
     setShowDeleteConfirmModal(true);
   };
 
-  /**
-   * Maneja el envío del formulario para agregar un nuevo empleado.
-   */
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
-    setLoading(true);
+    setComponentLoading(true); // Activa carga durante el envío
 
     const { nombre, email, telefono, password, id_rol, especialidad } = formFields;
 
-    if (!nombre || !email || !password || !id_rol) {
-      showError('Por favor, rellena todos los campos obligatorios: Nombre, Email, Contraseña y Rol.');
-      setLoading(false);
+    if (!nombre || !email || !password || id_rol === 0) {
+      showMessage('error', 'Por favor, rellena todos los campos obligatorios: Nombre, Email, Contraseña y Rol.');
+      setComponentLoading(false);
       return;
     }
 
-    const selectedRoleName = roles.find(r => r.id_rol.toString() === id_rol)?.nombre.toLowerCase();
+    const selectedRoleName = roles.find(r => r.id_rol === id_rol)?.nombre.toLowerCase();
+
     if (selectedRoleName === 'veterinario' && !especialidad) {
-      showError('Si el rol es veterinario, la especialidad es obligatoria.');
-      setLoading(false);
+      showMessage('error', 'Si el rol es veterinario, la especialidad es obligatoria.');
+      setComponentLoading(false);
       return;
     }
 
     try {
-      // 1. Crear usuario en Supabase Auth
-      const { data: authData, error: signupError } = await supabase.auth.admin.createUser({
-        email: email,
+      if (userRole !== 'admin') { // Doble check de permisos
+        throw new Error('No tienes permisos de administrador para realizar esta acción.');
+      }
+
+      // Crear usuario en Supabase Auth. El trigger handle_new_user se encargará de las tablas públicas.
+      const { data: authData, error: signupError } = await supabase.auth.admin.inviteUserByEmail(email, {
         password: password,
-        email_confirm: true, // Opcional: true para confirmar automáticamente el email para empleados
-        user_metadata: {
-          nombre: nombre,
+        data: { // Estos metadatos serán leídos por tu trigger `handle_new_user`
+          nombre_completo: nombre,
           telefono: telefono,
-          rol_id: id_rol,
-          rol_nombre: selectedRoleName
-        }
+          role_id: id_rol, 
+          especialidad: especialidad, 
+        },
       });
 
-      if (signupError || !authData?.user) {
-        throw new Error(signupError?.message || 'Error al crear usuario en autenticación.');
-      }
-
-      const userId = authData.user.id;
-
-      // 2. Insertar en public.users
-      const { error: userInsertError } = await supabase
-        .from('users')
-        .insert({
-          id_user: userId,
-          nombre: nombre,
-          email: email,
-          telefono: telefono || null,
-          activo: true, // Por defecto activo
-          creado_en: new Date().toISOString(),
-        });
-
-      if (userInsertError) {
-        // Si falla la inserción en public.users, intentar revertir el usuario de auth
-        await supabase.auth.admin.deleteUser(userId);
-        throw new Error(userInsertError.message || 'Error al guardar detalles del usuario. Usuario de auth revertido.');
-      }
-
-      // 3. Insertar en public.user_roles
-      const { error: userRoleInsertError } = await supabase
-        .from('user_roles')
-        .insert({
-          id_user: userId,
-          id_rol: parseInt(id_rol),
-        });
-
-      if (userRoleInsertError) {
-        // Aquí la reversión es más compleja, idealmente usar transacciones si Supabase las soporta nativamente o una función Edge
-        console.error('Error al asignar rol, limpiando datos parciales...');
-        await supabase.from('users').delete().eq('id_user', userId); // Limpiar de public.users
-        await supabase.auth.admin.deleteUser(userId); // Limpiar de auth.users
-        throw new Error(userRoleInsertError.message || 'Error al asignar el rol. Datos parciales revertidos.');
-      }
-
-      // 4. Si el rol es veterinario, insertar en public.veterinarios
-      if (selectedRoleName === 'veterinario') {
-        const { error: vetInsertError } = await supabase
-          .from('veterinarios')
-          .insert({
-            id_user: userId,
-            nombre: nombre,
-            especialidad: especialidad,
-            telefono: telefono || null,
-            email: email,
-          });
-
-        if (vetInsertError) {
-          // Si falla aquí, los datos en users y user_roles ya están, esto requeriría un manejo específico
-          console.warn('Advertencia: Error al insertar en veterinarios. El usuario se creó y se le asignó un rol, pero falta el detalle de veterinario.');
-          showError('Empleado creado, pero hubo un error al añadir los detalles de veterinario: ' + vetInsertError.message);
-          setLoading(false); // No salimos del todo, es un error parcial
-          return; // Retornamos aquí para evitar el success message general.
+      if (signupError) {
+        if (signupError.message.includes('User already registered')) {
+          showMessage('error', 'El correo electrónico ya está registrado. Por favor, usa otro.');
+        } else {
+          throw new Error(signupError.message || 'Error al crear usuario en autenticación.');
         }
+      } else {
+        showMessage('success', 'Empleado agregado exitosamente. Se ha enviado un correo de confirmación (si tu configuración lo requiere).');
+        setShowAddModal(false);
+        fetchEmployees(); // Forzar la recarga de la tabla después de agregar
       }
 
-      showSuccess('Empleado agregado exitosamente.');
-      setShowAddModal(false);
-      fetchEmployees(); // Recargar la lista
     } catch (err: any) {
       console.error('Error adding employee:', err.message);
-      showError('No se pudo agregar al empleado: ' + err.message);
+      showMessage('error', 'No se pudo agregar al empleado: ' + err.message);
     } finally {
-      setLoading(false);
+      setComponentLoading(false);
     }
   };
 
-  /**
-   * Maneja el envío del formulario para editar un empleado existente.
-   */
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
-    setLoading(true);
+    setComponentLoading(true); // Activa carga durante el envío
 
     const { id_user, nombre, email, telefono, id_rol, especialidad, activo } = formFields;
+
     if (!currentEmployee) {
-      showError('No hay empleado seleccionado para editar.');
-      setLoading(false);
+      showMessage('error', 'No hay empleado seleccionado para editar.');
+      setComponentLoading(false);
       return;
     }
 
-    const selectedRoleName = roles.find(r => r.id_rol.toString() === id_rol)?.nombre.toLowerCase();
+    const selectedRoleName = roles.find(r => r.id_rol === id_rol)?.nombre.toLowerCase();
+
     if (selectedRoleName === 'veterinario' && !especialidad) {
-      showError('Si el rol es veterinario, la especialidad es obligatoria.');
-      setLoading(false);
+      showMessage('error', 'Si el rol es veterinario, la especialidad es obligatoria.');
+      setComponentLoading(false);
       return;
     }
 
     try {
+      if (userRole !== 'admin') { // Doble check de permisos
+        throw new Error('No tienes permisos de administrador para realizar esta acción.');
+      }
+
       // 1. Actualizar public.users
       const { error: userUpdateError } = await supabase
         .from('users')
@@ -437,135 +350,90 @@ const GestionEmpleadosAdmin: React.FC = () => {
           activo: activo,
         })
         .eq('id_user', id_user);
-
       if (userUpdateError) throw userUpdateError;
 
       // 2. Actualizar public.user_roles si el rol cambió
-      if (parseInt(id_rol) !== currentEmployee.id_rol) {
+      if (id_rol !== currentEmployee.id_rol) {
         const { error: userRoleUpdateError } = await supabase
           .from('user_roles')
-          .update({ id_rol: parseInt(id_rol) })
+          .update({ id_rol: id_rol })
           .eq('id_user', id_user);
         if (userRoleUpdateError) throw userRoleUpdateError;
-      }
 
-      // 3. Gestionar tabla public.veterinarios
-      if (selectedRoleName === 'veterinario') {
-        // Insertar o actualizar en veterinarios
-        const { data: existingVet, error: fetchVetError } = await supabase
-          .from('veterinarios')
-          .select('id_veterinario')
-          .eq('id_user', id_user)
-          .single();
-
-        if (fetchVetError && fetchVetError.code !== 'PGRST116') { // PGRST116 means "no rows found"
-            throw fetchVetError;
+        // Lógica de transición de perfil específico si el rol cambió
+        // Eliminar de tablas de perfil antiguas
+        if (currentEmployee.nombre_rol.toLowerCase() === 'veterinario') {
+          await supabase.from('veterinarios').delete().eq('id_user', id_user);
+        } else if (currentEmployee.nombre_rol.toLowerCase() === 'cliente') {
+          await supabase.from('clientes').delete().eq('id_user', id_user);
         }
 
-        if (existingVet) {
-          // Actualizar veterinario existente
-          const { error: vetUpdateError } = await supabase
-            .from('veterinarios')
-            .update({ nombre: nombre, especialidad: especialidad, telefono: telefono || null, email: email })
-            .eq('id_user', id_user);
-          if (vetUpdateError) throw vetUpdateError;
-        } else {
-          // Insertar nuevo veterinario
-          const { error: vetInsertError } = await supabase
-            .from('veterinarios')
-            .insert({ id_user: id_user, nombre: nombre, especialidad: especialidad, telefono: telefono || null, email: email });
-          if (vetInsertError) throw vetInsertError;
+        // Insertar en tabla de perfil nueva si aplica
+        if (selectedRoleName === 'veterinario') {
+          await supabase.from('veterinarios').insert({
+            id_user: id_user, nombre: nombre, especialidad: especialidad, telefono: telefono || null, email: email
+          });
+        } else if (selectedRoleName === 'cliente') {
+          await supabase.from('clientes').insert({
+            id_user: id_user, nombre: nombre, telefono: telefono || null, email: email
+          });
         }
-      } else if (currentEmployee.nombre_rol.toLowerCase() === 'veterinario') {
-        // Si el rol anterior era veterinario y ahora no lo es, eliminar de la tabla veterinarios
-        const { error: vetDeleteError } = await supabase
+      } else if (selectedRoleName === 'veterinario') {
+        // Si el rol NO cambió pero sigue siendo veterinario, actualizar solo la especialidad si ha cambiado
+        const { error: vetUpdateError } = await supabase
           .from('veterinarios')
-          .delete()
+          .update({ especialidad: especialidad, nombre: nombre, email: email, telefono: telefono })
           .eq('id_user', id_user);
-        if (vetDeleteError) throw vetDeleteError;
+        if (vetUpdateError) console.warn('Error al actualizar especialidad de veterinario:', vetUpdateError.message);
       }
       
-      // 4. Actualizar email en Supabase Auth si cambió
+      // 3. Actualizar email en Supabase Auth si cambió (opcional, Admin puede no tener permiso)
       if (email !== currentEmployee.email) {
         const { error: authUpdateError } = await supabase.auth.admin.updateUserById(id_user, { email: email });
         if (authUpdateError) {
           console.warn('Advertencia: Email actualizado en public.users pero no en auth.users:', authUpdateError.message);
-          showError('Empleado actualizado, pero no se pudo actualizar el email de autenticación: ' + authUpdateError.message);
+          showMessage('error', 'Empleado actualizado, pero no se pudo actualizar el email de autenticación: ' + authUpdateError.message);
         }
       }
 
-      showSuccess('Empleado actualizado exitosamente.');
+      showMessage('success', 'Empleado actualizado exitosamente.');
       setShowEditModal(false);
-      fetchEmployees(); // Recargar la lista
+      fetchEmployees(); // Forzar la recarga de la tabla después de editar
     } catch (err: any) {
       console.error('Error updating employee:', err.message);
-      showError('No se pudo actualizar al empleado: ' + err.message);
+      showMessage('error', 'No se pudo actualizar al empleado: ' + err.message);
     } finally {
-      setLoading(false);
+      setComponentLoading(false);
     }
   };
 
-  /**
-   * Maneja la eliminación de un empleado.
-   */
   const handleDeleteConfirm = async () => {
     if (!currentEmployee) return;
     clearMessages();
-    setLoading(true);
+    setComponentLoading(true); // Activa carga durante el envío
 
     try {
+      if (userRole !== 'admin') { // Doble check de permisos
+        throw new Error('No tienes permisos de administrador para realizar esta acción.');
+      }
+
       const userId = currentEmployee.id_user;
 
-      // 1. Eliminar de tablas relacionadas que tienen FK a id_user
-      // (asumiendo que id_user es la FK y no la PK en estas tablas)
-      // OJO: Si hay FKs en cascada en la BD, algunas de estas eliminaciones pueden ser automáticas.
-      // Es buena práctica eliminarlas explícitamente si no hay cascada o si se quiere controlar el orden.
-      // Revisar el schema:
-      // public.clientes.id_user -> uuid
-      // public.veterinarios.id_user -> uuid
-      // public.user_roles.id_user -> uuid
-
-      // Eliminar de public.user_roles (necesario antes de users, si no hay cascade)
-      const { error: userRoleDeleteError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('id_user', userId);
-      if (userRoleDeleteError) throw userRoleDeleteError;
-
-      // Eliminar de public.veterinarios si existe (si el rol era veterinario)
-      if (currentEmployee.nombre_rol.toLowerCase() === 'veterinario') {
-        const { error: vetDeleteError } = await supabase
-          .from('veterinarios')
-          .delete()
-          .eq('id_user', userId);
-        if (vetDeleteError) throw vetDeleteError;
-      }
-      
-      // Eliminar de public.users
-      const { error: userDeleteError } = await supabase
-        .from('users')
-        .delete()
-        .eq('id_user', userId);
-      if (userDeleteError) throw userDeleteError;
-
-      // 4. Eliminar de auth.users (¡esta es la más importante para Supabase Auth!)
+      // Eliminar usuario directamente de Supabase Auth. El trigger handle_deleted_user se encargará de las tablas públicas.
       const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId);
       if (authDeleteError) {
-        // Considerar aquí qué hacer si la eliminación de Auth falla pero las tablas públicas ya se eliminaron.
-        // Puede requerir intervención manual en Auth Dashboard.
-        console.error('Error al eliminar usuario de Supabase Auth:', authDeleteError.message);
-        throw new Error('Error al eliminar el usuario de autenticación. Es posible que deba eliminarse manualmente en el panel de Supabase.');
+        throw new Error(`Error al eliminar usuario en Auth: ${authDeleteError.message}`);
       }
 
-      showSuccess('Empleado eliminado exitosamente.');
+      showMessage('success', 'Empleado eliminado exitosamente.');
       setShowDeleteConfirmModal(false);
       setCurrentEmployee(null);
-      fetchEmployees(); // Recargar la lista
+      fetchEmployees(); // Forzar la recarga de la tabla después de eliminar
     } catch (err: any) {
       console.error('Error deleting employee:', err.message);
-      showError('No se pudo eliminar al empleado: ' + err.message);
+      showMessage('error', 'No se pudo eliminar al empleado: ' + err.message);
     } finally {
-      setLoading(false);
+      setComponentLoading(false);
     }
   };
 
@@ -576,10 +444,8 @@ const GestionEmpleadosAdmin: React.FC = () => {
         employee.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.telefono?.toLowerCase().includes(searchTerm.toLowerCase());
-
       const matchesRole = filterRole === '' ||
-        employee.id_rol.toString() === filterRole;
-
+        employee.id_rol.toString() === filterRole; // Comparar id_rol como string
       return matchesSearch && matchesRole;
     });
   }, [employees, searchTerm, filterRole]);
@@ -597,7 +463,9 @@ const GestionEmpleadosAdmin: React.FC = () => {
     }
   };
 
-  if (loading && employees.length === 0) {
+  // Loader principal: Muestra el loader si AuthContext está cargando O si este componente está cargando
+  // Y si userRole es 'admin' (para evitar loader si no se permite el acceso)
+  if (authLoading || (componentLoading && userRole === 'admin')) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] bg-gray-950 text-white font-inter">
         <Loader2 className="animate-spin mr-3 text-blue-400" size={36} />
@@ -606,6 +474,18 @@ const GestionEmpleadosAdmin: React.FC = () => {
     );
   }
 
+  // Redirigir o mostrar mensaje de acceso denegado si el usuario NO es admin
+  // Esto se activa solo DESPUÉS de que authLoading sea false (AuthContext ya resolvió el rol)
+  if (!authLoading && userRole !== 'admin') {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] bg-gray-950 text-white text-xl">
+        Acceso Denegado. Por favor, inicia sesión con una cuenta de administrador.
+        {/* Opcional: window.location.href = '/login' después de un timeout, si el AuthProvider no redirige automáticamente */}
+      </div>
+    );
+  }
+
+  // Renderizar el contenido normal si el usuario es admin y no está en carga interna
   return (
     <div className="p-6 bg-gray-950 text-white min-h-screen font-inter">
       <h2 className="text-3xl font-extrabold text-indigo-400 text-center mb-8 flex items-center justify-center gap-3">
@@ -628,7 +508,7 @@ const GestionEmpleadosAdmin: React.FC = () => {
         </div>
       )}
 
-      {/* Controles de búsqueda y filtro */}
+      {/* Controles de búsqueda, filtro y el nuevo botón Actualizar */}
       <div className="bg-gray-900 p-6 rounded-xl shadow-lg border border-blue-800 mb-8 flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 md:space-x-4">
         <div className="relative w-full md:w-1/2">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -637,8 +517,8 @@ const GestionEmpleadosAdmin: React.FC = () => {
             placeholder="Buscar por nombre, email o teléfono..."
             value={searchTerm}
             onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1); // Reset page on search
+              setSearchTerm(e.target.value);
+              setCurrentPage(1); // Reset page on search
             }}
             className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 transition"
           />
@@ -653,11 +533,19 @@ const GestionEmpleadosAdmin: React.FC = () => {
         >
           <option value="">Todos los roles</option>
           {roles.map((rol) => (
-            <option key={rol.id_rol} value={rol.id_rol}>
+            <option key={rol.id_rol} value={rol.id_rol}> {/* Value es el ID del rol */}
               {rol.nombre.charAt(0).toUpperCase() + rol.nombre.slice(1)}
             </option>
           ))}
         </select>
+        <button
+          onClick={fetchEmployees} // Añadido el botón de actualizar manual
+          className="w-full md:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold flex items-center justify-center transition shadow-md"
+          disabled={componentLoading} // Desactivar si ya está cargando internamente
+        >
+          <RotateCcw size={20} className={`mr-2 ${componentLoading ? 'animate-spin' : ''}`} />
+          Actualizar
+        </button>
         <button
           onClick={openAddModal}
           className="w-full md:w-auto px-6 py-2.5 bg-green-700 hover:bg-green-600 rounded-lg text-white font-semibold flex items-center justify-center transition shadow-md"
@@ -669,7 +557,7 @@ const GestionEmpleadosAdmin: React.FC = () => {
 
       {/* Tabla de empleados */}
       <div className="bg-gray-900 p-6 rounded-xl shadow-lg border border-blue-800">
-        {paginatedEmployees.length === 0 && !loading ? (
+        {paginatedEmployees.length === 0 && !componentLoading ? (
           <p className="text-gray-400 text-center py-8">No hay empleados que coincidan con la búsqueda o filtro.</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-700">
@@ -742,13 +630,12 @@ const GestionEmpleadosAdmin: React.FC = () => {
             </table>
           </div>
         )}
-
         {/* Paginación */}
         {filteredEmployees.length > itemsPerPage && (
           <div className="flex justify-center items-center space-x-2 mt-6">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1 || loading}
+              disabled={currentPage === 1 || componentLoading}
               className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <ChevronLeft size={20} />
@@ -756,7 +643,7 @@ const GestionEmpleadosAdmin: React.FC = () => {
             <span className="text-gray-300">Página {currentPage} de {totalPages}</span>
             <button
               onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages || loading}
+              disabled={currentPage === totalPages || componentLoading}
               className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <ChevronRight size={20} />
@@ -773,6 +660,7 @@ const GestionEmpleadosAdmin: React.FC = () => {
               <UserPlus size={24} /> Agregar Nuevo Empleado
             </h3>
             {error && <p className="bg-red-700 text-red-100 p-3 rounded text-sm mb-4">{error}</p>}
+            {success && <p className="bg-green-700 text-green-100 p-3 rounded text-sm mb-4">{success}</p>}
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <input
                 name="nombre"
@@ -814,14 +702,14 @@ const GestionEmpleadosAdmin: React.FC = () => {
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-blue-500 focus:border-blue-500 transition"
                 required
               >
-                <option value="">Selecciona el rol</option>
+                <option value={0}>Selecciona el rol</option>
                 {roles.map((rol) => (
                   <option key={rol.id_rol} value={rol.id_rol}>
                     {rol.nombre.charAt(0).toUpperCase() + rol.nombre.slice(1)}
                   </option>
                 ))}
               </select>
-              {roles.find(r => r.id_rol.toString() === formFields.id_rol)?.nombre.toLowerCase() === 'veterinario' && (
+              {roles.find(r => r.id_rol === formFields.id_rol)?.nombre.toLowerCase() === 'veterinario' && (
                 <input
                   name="especialidad"
                   placeholder="Especialidad del veterinario"
@@ -836,24 +724,23 @@ const GestionEmpleadosAdmin: React.FC = () => {
                   type="button"
                   onClick={() => setShowAddModal(false)}
                   className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition shadow-md"
-                  disabled={loading}
+                  disabled={componentLoading}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   className="px-6 py-2 bg-indigo-700 hover:bg-indigo-600 text-white rounded-lg font-semibold transition shadow-md flex items-center justify-center"
-                  disabled={loading}
+                  disabled={componentLoading}
                 >
-                  {loading ? <Loader2 className="animate-spin mr-2" size={20} /> : <UserPlus size={20} className="mr-2" />}
-                  {loading ? 'Creando...' : 'Crear Empleado'}
+                  {componentLoading ? <Loader2 className="animate-spin mr-2" size={20} /> : <UserPlus size={20} className="mr-2" />}
+                  {componentLoading ? 'Creando...' : 'Crear Empleado'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
       {/* Modal para Editar Empleado */}
       {showEditModal && currentEmployee && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center p-4 z-50 animate-fade-in">
@@ -862,6 +749,7 @@ const GestionEmpleadosAdmin: React.FC = () => {
               <Edit size={24} /> Editar Empleado
             </h3>
             {error && <p className="bg-red-700 text-red-100 p-3 rounded text-sm mb-4">{error}</p>}
+            {success && <p className="bg-green-700 text-green-100 p-3 rounded text-sm mb-4">{success}</p>}
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <input
                 name="nombre"
@@ -894,14 +782,14 @@ const GestionEmpleadosAdmin: React.FC = () => {
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-blue-500 focus:border-blue-500 transition"
                 required
               >
-                <option value="">Selecciona el rol</option>
+                <option value={0}>Selecciona el rol</option>
                 {roles.map((rol) => (
                   <option key={rol.id_rol} value={rol.id_rol}>
                     {rol.nombre.charAt(0).toUpperCase() + rol.nombre.slice(1)}
                   </option>
                 ))}
               </select>
-              {roles.find(r => r.id_rol.toString() === formFields.id_rol)?.nombre.toLowerCase() === 'veterinario' && (
+              {roles.find(r => r.id_rol === formFields.id_rol)?.nombre.toLowerCase() === 'veterinario' && (
                 <input
                   name="especialidad"
                   placeholder="Especialidad del veterinario"
@@ -927,24 +815,23 @@ const GestionEmpleadosAdmin: React.FC = () => {
                   type="button"
                   onClick={() => setShowEditModal(false)}
                   className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition shadow-md"
-                  disabled={loading}
+                  disabled={componentLoading}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   className="px-6 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg font-semibold transition shadow-md flex items-center justify-center"
-                  disabled={loading}
+                  disabled={componentLoading}
                 >
-                  {loading ? <Loader2 className="animate-spin mr-2" size={20} /> : <Edit size={20} className="mr-2" />}
-                  {loading ? 'Guardando...' : 'Guardar Cambios'}
+                  {componentLoading ? <Loader2 className="animate-spin mr-2" size={20} /> : <Edit size={20} className="mr-2" />}
+                  {componentLoading ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
       {/* Modal de Confirmación de Eliminación */}
       {showDeleteConfirmModal && currentEmployee && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center p-4 z-50 animate-fade-in">
@@ -953,18 +840,22 @@ const GestionEmpleadosAdmin: React.FC = () => {
               <Trash2 size={24} /> Confirmar Eliminación
             </h3>
             <p className="text-gray-300 text-center">
-              ¿Estás seguro de que quieres eliminar al empleado <span className="font-semibold text-white">{currentEmployee.nombre}</span> ({currentEmployee.nombre_rol})?
+              ¿Estás seguro de que quieres eliminar al empleado <span
+                className="font-semibold text-white">{currentEmployee.nombre}</span>
+              ({currentEmployee.nombre_rol})?
             </p>
             <p className="text-sm text-gray-400 text-center">
-              Esta acción eliminará permanentemente al usuario de todos los registros del sistema, incluyendo la autenticación.
+              Esta acción eliminará permanentemente al usuario de todos los
+              registros del sistema, incluyendo la autenticación.
             </p>
             {error && <p className="bg-red-700 text-red-100 p-3 rounded text-sm mb-4">{error}</p>}
+            {success && <p className="bg-green-700 text-green-100 p-3 rounded text-sm mb-4">{success}</p>}
             <div className="flex justify-end space-x-3 mt-6">
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirmModal(false)}
                 className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition shadow-md"
-                disabled={loading}
+                disabled={componentLoading}
               >
                 Cancelar
               </button>
@@ -972,10 +863,10 @@ const GestionEmpleadosAdmin: React.FC = () => {
                 type="button"
                 onClick={handleDeleteConfirm}
                 className="px-6 py-2 bg-red-700 hover:bg-red-600 text-white rounded-lg font-semibold transition shadow-md flex items-center justify-center"
-                disabled={loading}
+                disabled={componentLoading}
               >
-                {loading ? <Loader2 className="animate-spin mr-2" size={20} /> : <Trash2 size={20} className="mr-2" />}
-                {loading ? 'Eliminando...' : 'Eliminar'}
+                {componentLoading ? <Loader2 className="animate-spin mr-2" size={20} /> : <Trash2 size={20} className="mr-2" />}
+                {componentLoading ? 'Eliminando...' : 'Eliminar'}
               </button>
             </div>
           </div>

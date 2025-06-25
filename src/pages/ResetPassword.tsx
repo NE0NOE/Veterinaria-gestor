@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../supabaseClient'; // Asegúrate de que la ruta sea correcta
 
 const ResetPassword: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -14,13 +14,23 @@ const ResetPassword: React.FC = () => {
     setError(null);
     setMessage(null);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    // Define la URL completa a la que Supabase debe redirigir después de que el usuario haga clic en el enlace del correo.
+    // ¡Asegúrate de que 'https://max-g-five.vercel.app/' es tu dominio base en Vercel!
+const redirectToUrl = 'https://max-g-five.vercel.app/reset-password-confirm';
 
-    if (error) {
-      setError('Hubo un error al enviar el correo de recuperación.');
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectToUrl,
+    });
+
+    if (resetError) {
+      // Muestra el mensaje de error específico de Supabase para depuración y mejor UX
+      setError('Hubo un error al enviar el correo de recuperación: ' + resetError.message);
     } else {
-      setMessage('Se ha enviado un correo para restablecer tu contraseña.');
-      setTimeout(() => navigate('/login'), 3000);
+      setMessage('Se ha enviado un correo para restablecer tu contraseña. Por favor, revisa tu bandeja de entrada.');
+      // Opcional: Podrías no redirigir automáticamente para que el usuario lea el mensaje
+      // y luego haga clic en "Regresar al Login". Por ahora, mantendremos la redirección con un pequeño delay.
+      setTimeout(() => navigate('/login'), 3000); 
     }
   };
 

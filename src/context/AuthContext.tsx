@@ -1,5 +1,7 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { supabase } from '../supabaseClient'; // Importa tu cliente Supabase
+import { supabase } from '../supabaseClient.ts'; // <<-- CAMBIO CLAVE: AÑADIDO .ts
+// ASEGÚRATE DE QUE TAMBIÉN ESTÁ ESTA IMPORTACIÓN si usas el componente Loader2 en AuthProvider
+// import { Loader2 } from 'lucide-react'; 
 
 interface User {
   id: string; // UUID de Supabase
@@ -93,7 +95,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           } catch (err: any) {
             // Este catch atrapará el error de timeout o cualquier otro error inesperado.
             console.error('AuthContext: UNHANDLED ERROR IN ROLE FETCH BLOCK:', err.message, err);
-            // Eliminado: setError('Error al obtener el rol del usuario: ' + err.message);
           } finally {
             setLoading(false);
             console.log("AuthContext: Loading set to false after role fetch attempt.");
@@ -147,7 +148,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   return (
     <AuthContext.Provider value={contextValue}>
-      {children}
+      {/* Añade esta parte si tu AuthProvider es el que muestra el Loader2 */}
+      {/* {loading ? (
+        <div className="flex items-center justify-center min-h-screen bg-gray-950 text-white">
+          <Loader2 className="animate-spin mr-3 text-blue-400" size={36} />
+          <p className="text-xl text-blue-400">Cargando autenticación...</p>
+        </div>
+      ) : (
+        children
+      )} */}
+      {children} {/* Usa esta línea si el Loader2 ya lo maneja otra parte, o si no usas Loader2 aquí */}
     </AuthContext.Provider>
   );
 };
