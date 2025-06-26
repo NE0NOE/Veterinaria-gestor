@@ -20,15 +20,19 @@ jobs:
             # Navegamos a la carpeta del proyecto
             cd /home/ec2-user/veterinaria
             
-            # Traemos los últimos cambios
-            git pull origin main
-            echo "✅ Código actualizado."
+            # --- COMANDOS CORREGIDOS ---
+            # Reemplazamos 'git pull' con un reseteo forzado.
+            # Esto elimina cualquier cambio local en el servidor y lo deja idéntico al repo.
+            # Es la forma correcta de hacerlo en un despliegue automático.
+            git fetch origin
+            git reset --hard origin/main
+            git clean -fd
+            echo "✅ Repositorio reseteado a la última versión de main."
             
             # Instalamos dependencias
             npm install
             echo "✅ Dependencias instaladas."
             
-            # --- COMANDO CLAVE AÑADIDO ---
             # Arreglamos el permiso de ejecución de Vite por si acaso
             chmod +x ./node_modules/.bin/vite
             echo "✅ Permisos de Vite corregidos."
