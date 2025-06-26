@@ -2,17 +2,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext'; 
-
 // Importar iconos de Lucide React para el sidebar y las métricas
-import {
-  LogOut, LayoutDashboard, UserPlus, Users, CalendarDays, Package, Truck, FileText, PawPrint, MessageSquare, Stethoscope, Loader2 // 'HomeIcon' eliminado, 'Stethoscope' añadido, 'Loader2' añadido
+import { 
+  LogOut, LayoutDashboard, Users, CalendarDays, Package, Truck, 
+  FileText, PawPrint, MessageSquare, Stethoscope, Loader2 
 } from 'lucide-react'; 
-
 import imagenHero from '../../assets/maxi.jpg'; // Imagen de fondo para el hero
 
 const AdminDashboardLayout = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth(); 
+  const { user, isLoading: authLoading } = useAuth(); // Usar isLoading del AuthContext
+
   const [adminName, setAdminName] = useState<string>('Administrador');
   const [metrics, setMetrics] = useState({
     pendingPublicAppointments: 0,
@@ -25,26 +25,28 @@ const AdminDashboardLayout = () => {
 
   // Handler para cerrar la sesión del usuario y redirigir a la LandingPage
   const handleLogoutAndGoToLanding = async () => {
+    // Reemplaza window.confirm con un modal personalizado si lo necesitas
     if (!window.confirm('¿Estás seguro de que quieres cerrar tu sesión y regresar a la página principal?')) {
       return; 
     }
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Error al cerrar sesión:', error.message);
-      // En un entorno de producción, aquí usarías un modal personalizado
-      // alert('Error al cerrar sesión: ' + error.message); 
+      // Aquí puedes usar un modal para mostrar el error
     } else {
-      navigate('/'); 
+      // La redirección a /login es manejada por el AuthContext en onAuthStateChange
+      // setTimeout para dar tiempo al AuthContext de procesar el logout
+      setTimeout(() => navigate('/'), 100); 
     }
   };
 
-
   // Función para obtener el nombre del administrador y las métricas
   const fetchAdminDataAndMetrics = useCallback(async () => {
+    // Cargar métricas solo si AuthContext no está cargando y el usuario está disponible
     if (authLoading || !user) {
       setIsLoadingMetrics(false);
       return;
-    }
+    } 
 
     setIsLoadingMetrics(true);
     try {
@@ -54,7 +56,6 @@ const AdminDashboardLayout = () => {
         .select('nombre')
         .eq('id_user', user.id)
         .single();
-
       if (userError && userError.code !== 'PGRST116') { 
         console.error('Error al obtener el nombre del usuario:', userError.message);
       } else if (userData) {
@@ -88,9 +89,8 @@ const AdminDashboardLayout = () => {
 
       // 5. Citas confirmadas para hoy
       const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0).toISOString();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0).toISOString(); 
       const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59).toISOString();
-
       const { count: confirmedToday, error: confirmedTodayError } = await supabase
         .from('citas')
         .select('*', { count: 'exact', head: true })
@@ -99,7 +99,6 @@ const AdminDashboardLayout = () => {
         .lte('fecha', endOfDay);
       if (confirmedTodayError) throw confirmedTodayError;
 
-
       setMetrics({
         pendingPublicAppointments: pendingPublic || 0,
         totalClients: totalClients || 0,
@@ -107,7 +106,6 @@ const AdminDashboardLayout = () => {
         totalVeterinarios: totalVeterinarios || 0,
         totalCitasConfirmadasHoy: confirmedToday || 0,
       });
-
     } catch (error: any) {
       console.error('Error al cargar datos del admin o métricas:', error.message);
     } finally {
@@ -117,9 +115,7 @@ const AdminDashboardLayout = () => {
 
   useEffect(() => {
     fetchAdminDataAndMetrics();
-
   }, [fetchAdminDataAndMetrics]);
-
 
   return (
     <div className="flex min-h-screen bg-gray-950 text-white font-inter">
@@ -128,89 +124,75 @@ const AdminDashboardLayout = () => {
         <div>
           {/* Título de la Aplicación - Ahora clickeable para cerrar sesión y navegar a Home */}
           <div
-            onClick={handleLogoutAndGoToLanding}
+            onClick={handleLogoutAndGoToLanding} 
             className="cursor-pointer block text-3xl font-extrabold tracking-tight mb-10 text-blue-400 hover:text-blue-300 transition-colors duration-200"
             role="button"
             aria-label="Regresar a la página principal y cerrar sesión"
           >
             Max's Groomer
           </div>
-          <nav className="flex flex-col gap-3 text-lg"> {/* Cambiado gap-4 a gap-3 */}
+          <nav className="flex flex-col gap-3 text-lg"> 
             <NavLink
               to="/admin-dashboard"
               end
               className={({ isActive }) =>
-                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out 
-                ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
+                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
               }
             >
               <LayoutDashboard size={20} className="mr-3" /> Panel
             </NavLink>
-
+            {/* RUTA ACTUALIZADA AQUÍ (El comentario está en su propia línea) */}
             <NavLink
-              to="/admin-dashboard/ver-usuarios"
+              to="/admin-dashboard/gestion-completa-empleados" 
               className={({ isActive }) =>
-                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out 
-                ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
+                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
               }
             >
-              <UserPlus size={20} className="mr-3" /> Gestion de empleados
+              <Users size={20} className="mr-3" /> Gestión de Empleados 
             </NavLink>
-
-    
             <NavLink
-              to="/admin-dashboard/admin-citas-module" 
+              to="/admin-dashboard/admin-citas-module"
               className={({ isActive }) =>
-                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out 
-                ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
+                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
               }
             >
               <CalendarDays size={20} className="mr-3" /> Gestión de Citas
             </NavLink>
-            
             <NavLink
               to="/admin-dashboard/gestion-mascotas"
               className={({ isActive }) =>
-                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out 
-                ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
+                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
               }
             >
               <PawPrint size={20} className="mr-3" /> Gestión de Mascotas
             </NavLink>
-
             <NavLink
               to="/admin-dashboard/inventario"
               className={({ isActive }) =>
-                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out 
-                ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
+                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
               }
             >
               <Package size={20} className="mr-3" /> Inventario
             </NavLink>
-
             <NavLink
               to="/admin-dashboard/proveedores-compras"
               className={({ isActive }) =>
-                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out 
-                ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
+                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
               }
             >
               <Truck size={20} className="mr-3" /> Proveedores
             </NavLink>
-
             <NavLink
               to="/admin-dashboard/historial-clinico"
               className={({ isActive }) =>
-                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out 
-                ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
+                `flex items-center p-3 rounded-md transition-colors duration-200 ease-in-out ${isActive ? 'bg-indigo-700 text-white shadow-inner font-semibold' : 'hover:bg-gray-800 text-gray-300'}`
               }
             >
               <FileText size={20} className="mr-3" /> Historial Clínico
-            </NavLink> 
+            </NavLink>
           </nav>
         </div>
-
-        {/* Botón de Cerrar Sesión - Ahora ambos botones llaman la misma función */}
+        {/* Botón de Cerrar Sesión */}
         <div className="mt-auto pt-6 border-t border-gray-700">
           <button
             onClick={handleLogoutAndGoToLanding}
@@ -239,15 +221,15 @@ const AdminDashboardLayout = () => {
           </div>
         </section>
 
-        {/* Sección de Métricas */}
-        <section className="bg-gray-950 p-6 -mt-8 relative z-20"> 
+        {/* Sección de Métricas */} 
+        <section className="bg-gray-950 p-6 -mt-8 relative z-20">
           {isLoadingMetrics ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="animate-spin mr-2 text-blue-400" size={28} />
               <p className="text-xl text-blue-400">Cargando métricas...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6"> 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {/* Tarjeta de Citas Públicas Pendientes */}
               <div className="bg-gray-800 p-5 rounded-lg shadow-xl border border-blue-700 flex items-center justify-between transition-transform transform hover:scale-105">
                 <div>
@@ -256,7 +238,6 @@ const AdminDashboardLayout = () => {
                 </div>
                 <MessageSquare size={48} className="text-yellow-600 opacity-30" />
               </div>
-
               {/* Tarjeta de Citas Confirmadas Hoy */}
               <div className="bg-gray-800 p-5 rounded-lg shadow-xl border border-blue-700 flex items-center justify-between transition-transform transform hover:scale-105">
                 <div>
@@ -265,16 +246,14 @@ const AdminDashboardLayout = () => {
                 </div>
                 <CalendarDays size={48} className="text-green-600 opacity-30" />
               </div>
-
               {/* Tarjeta de Total de Clientes */}
               <div className="bg-gray-800 p-5 rounded-lg shadow-xl border border-blue-700 flex items-center justify-between transition-transform transform hover:scale-105">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-300 mb-1">Total Clientes</h3>
+                  <h3 className="text-lg font-semibold text-gray-300 mb-1">Total Clientes</h3> 
                   <p className="text-4xl font-bold text-blue-400">{metrics.totalClients}</p>
                 </div>
                 <Users size={48} className="text-blue-600 opacity-30" />
               </div>
-
               {/* Tarjeta de Total de Mascotas */}
               <div className="bg-gray-800 p-5 rounded-lg shadow-xl border border-blue-700 flex items-center justify-between transition-transform transform hover:scale-105">
                 <div>
@@ -283,7 +262,6 @@ const AdminDashboardLayout = () => {
                 </div>
                 <PawPrint size={48} className="text-purple-600 opacity-30" />
               </div>
-              
               {/* Tarjeta de Total de Veterinarios */}
               <div className="bg-gray-800 p-5 rounded-lg shadow-xl border border-blue-700 flex items-center justify-between transition-transform transform hover:scale-105">
                 <div>
@@ -297,12 +275,12 @@ const AdminDashboardLayout = () => {
         </section>
 
         {/* Rutas hijas */}
-        <main className="flex-1 bg-gray-950 text-white p-6 pt-0"> 
+        <main className="flex-1 bg-gray-950 text-white p-6 pt-0">
           <Outlet />
         </main>
       </div>
     </div>
   );
-};
+}; 
 
 export default AdminDashboardLayout;

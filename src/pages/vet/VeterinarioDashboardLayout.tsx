@@ -1,10 +1,7 @@
 import React from 'react';
-import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom'; // Asegúrate de importar Link
-
+import { Outlet, NavLink, useNavigate, Link} from 'react-router-dom'; // Asegúrate de importar Link
 import { supabase } from '../../supabaseClient'; // Asegúrate de que la ruta sea correcta
-
-import imagenHero from '../../assets/maxi.jpg'; // Reutiliza tu imagen
-
+import imagenHero from  '../../assets/maxi.jpg'; // Reutiliza tu imagen
 import { LogOut, Home as HomeIcon, Calendar, PawPrint, Clock } from 'lucide-react'; // Eliminado Package
 
 const VeterinarioDashboardLayout: React.FC = () => {
@@ -33,6 +30,7 @@ const VeterinarioDashboardLayout: React.FC = () => {
             >
               <HomeIcon className="mr-3" size={20} /> Dashboard
             </NavLink>
+
             <NavLink
               to="/veterinario-dashboard/gestionar-citas"
               className={({ isActive }) =>
@@ -43,8 +41,10 @@ const VeterinarioDashboardLayout: React.FC = () => {
             >
               <Calendar className="mr-3" size={20} /> Gestionar Citas
             </NavLink>
+
+            {/* RUTA CORREGIDA AQUÍ: El comentario se movió a una línea separada */}
             <NavLink
-              to="/veterinario-dashboard/gestionar-mascotas"
+              to="/veterinario-dashboard/gestion-mascotas-vet"
               className={({ isActive }) =>
                 isActive
                   ? 'text-green-300 font-semibold flex items-center p-2 rounded-md bg-gray-800'
@@ -53,12 +53,14 @@ const VeterinarioDashboardLayout: React.FC = () => {
             >
               <PawPrint className="mr-3" size={20} /> Gestionar Mascotas
             </NavLink>
-            {/* Esta ruta ya no será para el historial general de edición, sino que se accederá desde cada mascota */}
-            {/* Si tienes una sección de inventario para el veterinario, podrías añadirla aquí */}
+
+            {/* Esta ruta ya no será para el historial general de edición,
+                sino que se accederá desde cada mascota */}
+            {/* Si tienes una sección de inventario para el veterinario,
+                podrías añadirla aquí */}
             {/* ELIMINADO: NavLink a Inventario */}
           </nav>
         </div>
-        {/* ELIMINADO: Botón de Cerrar Sesión movido al Header Superior */}
       </aside>
 
       {/* Contenido principal */}
@@ -74,7 +76,6 @@ const VeterinarioDashboardLayout: React.FC = () => {
         >
           {/* Overlay para oscurecer y desaturar la imagen de fondo */}
           <div className="absolute inset-0 bg-black bg-opacity-60 grayscale" />
-
           <div className="relative z-10 flex items-center justify-between w-full">
             {/* Título Max Groomer que lleva a la landing page */}
             <Link to="/" className="text-3xl font-extrabold text-green-400 hover:text-green-300 transition-colors cursor-pointer">
@@ -93,7 +94,7 @@ const VeterinarioDashboardLayout: React.FC = () => {
 
         {/* Contenido de las rutas hijas */}
         <main className="flex-1 bg-black text-white p-6">
-          <Outlet /> {/* Aquí se renderizarán las rutas anidadas */}
+          <Outlet /> {/* Aqui se renderizarán las rutas anidadas */}
         </main>
       </div>
     </div>

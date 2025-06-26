@@ -31,12 +31,14 @@ import GestionMascotas from './pages/admin/GestionMascotas';
 import CreateAppointment from './pages/CreateAppointment';
 import GestionCitas from './pages/admin/GestionCitas'; // Para gestionar citas por veterinarios/admin
 import ProveedoresComprasPage from './pages/admin/ProveedoresComprasPage';
+import GestionCompletaEmpleados from './pages/admin/GestionCompletaEmpleados';
 
 // Importa los componentes para Veterinario con los nombres de archivo y componentes correctos
 import VeterinarioDashboardLayout from './pages/vet/VeterinarioDashboardLayout';
 import VeterinarioHome from './pages/vet/VeterinarioHome'; // Asegúrate de que el archivo se llame VeterinarioHome.tsx y el componente sea export default VeterinarioHome;
 import VeterinarioCitas from './pages/vet/VeterinarioCitas'; // ¡Importante: este es el componente que queremos cargar!
-
+import VeterinarioMascotas from './pages/vet/VeterinarioMascotas';
+import VeterinarioHistorialClinico from './pages/vet/VeterinarioHistorialClinico'; // Asegúrate de importar el componente de historial clínico
 
 // Componente de Ruta Protegida
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({ children, allowedRoles }) => {
@@ -90,43 +92,43 @@ const App = () => {
 
           {/* Cliente Dashboard (rol 'cliente') */}
           <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['cliente']}><ClienteDashboardLayout /></ProtectedRoute>}>
-              <Route index element={<Home />} />
-              <Route path="citas" element={<Citas />} />
-              <Route path="mascotas" element={<Mascotas />} />
-              <Route path="historial-clinico/:mascotaId?" element={<HistorialClinicoPage />} />
+            <Route index element={<Home />} />
+            <Route path="citas" element={<Citas />} />
+            <Route path="mascotas" element={<Mascotas />} />
+            <Route path="historial-clinico/:mascotaId?" element={<HistorialClinicoPage />} />
           </Route>
 
           {/* Dashboard Admin (roles 'admin') */}
           <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboardLayout /></ProtectedRoute>}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="agregar-usuario" element={<AgregarUsuario />} />
-              <Route path="ver-usuarios" element={<VerUsuarios />} />
-              <Route path="gestion-mascotas" element={<GestionMascotas />} />
-              <Route path="gestionar-citas" element={<GestionCitas />} />
-              <Route path="ver-mascotas" element={<VerMascotas />} />
-              <Route path="gestionar-citas-page" element={<GestionarCitasPage />} />
-              <Route path="admin-citas-module" element={<AdminCitasModule />} />
-              <Route path="historial-clinico/:mascotaId?" element={<HistorialClinicoPage />} />
-              <Route path="inventario" element={<InventarioPage />} />
-              <Route path="proveedores-compras" element={<ProveedoresComprasPage />} />
+            <Route index element={<AdminDashboard />} />
+            <Route path="gestion-completa-empleados" element={<GestionCompletaEmpleados />} />
+            <Route path="ver-usuarios" element={<VerUsuarios />} />
+            <Route path="gestion-mascotas" element={<GestionMascotas />} />
+            <Route path="gestionar-citas" element={<GestionCitas />} />
+            <Route path="ver-mascotas" element={<VerMascotas />} />
+            <Route path="gestionar-citas-page" element={<GestionarCitasPage />} />
+            <Route path="admin-citas-module" element={<AdminCitasModule />} />
+            <Route path="historial-clinico/:mascotaId?" element={<HistorialClinicoPage />} />
+            <Route path="inventario" element={<InventarioPage />} />
+            <Route path="proveedores-compras" element={<ProveedoresComprasPage />} />
           </Route>
 
           {/* Dashboard Veterinario (rol 'veterinario') */}
           <Route path="/veterinario-dashboard" element={<ProtectedRoute allowedRoles={['veterinario']}><VeterinarioDashboardLayout /></ProtectedRoute>}>
-              <Route index element={<VeterinarioHome />} /> {/* Usar el componente VeterinarioHome */}
-              <Route path="gestionar-citas" element={<VeterinarioCitas />} />
-              <Route path="admin-citas-module" element={<AdminCitasModule />} />
-              <Route path="gestion-mascotas" element={<GestionMascotas />} />
-              <Route path="historial-clinico/:mascotaId?" element={<HistorialClinicoPage />} />
-              {/* Añade aquí otras rutas específicas para el veterinario */}
+            <Route index element={<VeterinarioHome />} /> {/* Usar el componente VeterinarioHome */}
+            <Route path="gestionar-citas" element={<VeterinarioCitas />} />
+            <Route path="admin-citas-module" element={<AdminCitasModule />} />
+            <Route path="gestion-mascotas-vet" element={<VeterinarioMascotas/>} /> {/* RUTA CORREGIDA AQUÍ */}
+            <Route path="historial-clinico/:mascotaId?" element={<VeterinarioHistorialClinico />} /> {/* Asegúrate que este sea el componente correcto si no es HistorialClinicoPage general */}
+            {/* Añade aquí otras rutas específicas para el veterinario */}
           </Route>
 
           {/* Dashboard Asistente (rol 'asistente') */}
           <Route path="/asistente-dashboard" element={<ProtectedRoute allowedRoles={['asistente']}><AdminDashboardLayout /></ProtectedRoute>}>
-              <Route index element={<AdminDashboard />} /> {/* TEMPORAL: Dashboard general */}
-              <Route path="gestionar-citas" element={<GestionCitas />} />
-              <Route path="admin-citas-module" element={<AdminCitasModule />} />
-              <Route path="gestion-mascotas" element={<GestionMascotas />} />
+            <Route index element={<AdminDashboard />} /> {/* TEMPORAL: Dashboard general */}
+            <Route path="gestionar-citas" element={<GestionCitas />} />
+            <Route path="admin-citas-module" element={<AdminCitasModule />} />
+            <Route path="gestion-mascotas" element={<GestionMascotas />} />
           </Route>
 
           {/* Rutas protegidas genéricas */}

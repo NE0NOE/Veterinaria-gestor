@@ -1,163 +1,138 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { supabase } from '../supabaseClient.ts'; // <<-- CAMBIO CLAVE: AÑADIDO .ts
-// ASEGÚRATE DE QUE TAMBIÉN ESTÁ ESTA IMPORTACIÓN si usas el componente Loader2 en AuthProvider
-// import { Loader2 } from 'lucide-react'; 
+import { supabase } from '../supabaseClient.ts';
 
 interface User {
-  id: string; // UUID de Supabase
+  id: string;
   email: string | undefined;
-  role?: string; // Rol asignado por tu sistema de roles
+  role?: string;
 }
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
-  loading: boolean; // Para indicar si la autenticación inicial está en progreso
-  login: (user: User) => void; // Función para establecer el usuario (usado internamente o para flujos específicos)
-  logout: () => Promise<void>; // Función para cerrar sesión
+  loading: boolean;
+  login: (user: User) => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true); // Estado de carga inicial
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // Cargar sesión al iniciar
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("AuthContext: onAuthStateChange event:", event);
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const supabaseUser = session.user;
+        let cachedRole = localStorage.getItem(`role_${supabaseUser.id}`);
 
-        if (session?.user) {
-          const supabaseUser = session.user;
-          console.log("AuthContext: Supabase User ID:", supabaseUser.id);
-          console.log("AuthContext: Supabase User Email:", supabaseUser.email);
-
-          let userRole: string | undefined;
-
+        if (!cachedRole) {
+          console.log("AuthContext: No role in cache. Fetching from Supabase...");
           try {
-            console.log("AuthContext: Attempting to fetch user_roles for id_user:", supabaseUser.id);
-
-            // *** AÑADIMOS UN TIMEOUT PARA LA CONSULTA DE SUPABASE ***
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Supabase query timed out after 5 seconds')), 5000)
-            );
-
-            console.log("AuthContext: Executing Supabase query for user_roles...");
-            const { data: userRoleData, error: userRoleError } = await Promise.race([
-              supabase
-                .from('user_roles')
-                .select('id_rol')
-                .eq('id_user', supabaseUser.id)
-                .single(),
-              timeoutPromise
-            ]) as { data: { id_rol: number } | null; error: any | null; }; // Casteamos para TypeScript
-
-            // *** ESTOS LOGS DEBEN APARECER AHORA ***
-            console.log("AuthContext: Raw user_roles data response:", userRoleData);
-            console.log("AuthContext: Raw user_roles error response:", userRoleError);
-
-            if (userRoleError) {
-              if (userRoleError.code === 'PGRST116') {
-                console.warn('AuthContext: No role assigned in user_roles for this user (PGRST116). User ID:', supabaseUser.id);
-              } else {
-                console.error('AuthContext: Error fetching user role from user_roles:', userRoleError.message, userRoleError);
-              }
-            }
+            const { data: userRoleData, error: userRoleError } = await supabase
+              .from('user_roles')
+              .select('id_rol')
+              .eq('id_user', supabaseUser.id)
+              .single();
 
             if (userRoleData) {
-              console.log('AuthContext: userRoleData found:', userRoleData);
-              console.log('AuthContext: Attempting to fetch role name for id_rol:', userRoleData.id_rol);
-              
-              const { data: roleNameData, error: roleNameError } = await Promise.race([
-                supabase
-                  .from('roles')
-                  .select('nombre')
-                  .eq('id_rol', userRoleData.id_rol)
-                  .single(),
-                timeoutPromise // Usamos el mismo timeout
-              ]) as { data: { nombre: string } | null; error: any | null; };
+              const { data: roleNameData } = await supabase
+                .from('roles')
+                .select('nombre')
+                .eq('id_rol', userRoleData.id_rol)
+                .single();
 
-              console.log("AuthContext: Raw roles data response:", roleNameData);
-              console.log("AuthContext: Raw roles error response:", roleNameError);
+              cachedRole = roleNameData?.nombre?.toLowerCase().trim() || null;
 
-
-              if (roleNameError) {
-                console.error('AuthContext: Error fetching role name from roles:', roleNameError.message, roleNameError);
-              } else {
-                userRole = roleNameData?.nombre?.toLowerCase().trim();
-                console.log('AuthContext: ROL ASIGNADO AL USUARIO:', userRole);
+              if (cachedRole) {
+                localStorage.setItem(`role_${supabaseUser.id}`, cachedRole);
+                console.log("AuthContext: Rol obtenido y guardado en localStorage:", cachedRole);
               }
             } else {
-                console.warn('AuthContext: No userRoleData returned for user ID:', supabaseUser.id, '. User might not have a role assigned in user_roles table.');
+              console.warn("AuthContext: Usuario sin rol asignado");
             }
           } catch (err: any) {
-            // Este catch atrapará el error de timeout o cualquier otro error inesperado.
-            console.error('AuthContext: UNHANDLED ERROR IN ROLE FETCH BLOCK:', err.message, err);
-          } finally {
-            setLoading(false);
-            console.log("AuthContext: Loading set to false after role fetch attempt.");
+            console.error("AuthContext: Error al obtener el rol:", err.message);
           }
-
-          setUser({
-            id: supabaseUser.id,
-            email: supabaseUser.email,
-            role: userRole,
-          });
-          setIsAuthenticated(true);
-          console.log("AuthContext: User state set. isAuthenticated:", true, "User:", { id: supabaseUser.id, email: supabaseUser.email, role: userRole });
-
         } else {
-          console.log("AuthContext: onAuthStateChange: User logged out/no session.");
-          setUser(null);
-          setIsAuthenticated(false);
-          setLoading(false);
-          console.log("AuthContext: User state cleared. isAuthenticated:", false, "Loading set to false.");
+          console.log("AuthContext: Rol recuperado desde localStorage:", cachedRole);
         }
+
+        setUser({ id: supabaseUser.id, email: supabaseUser.email, role: cachedRole || undefined });
+        setIsAuthenticated(true);
+      } else {
+        console.log("AuthContext: No session. Usuario no autenticado.");
       }
-    );
+
+      setLoading(false);
+    };
+
+    initializeAuth();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("AuthContext: onAuthStateChange event:", event);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        const supabaseUser = session.user;
+        let cachedRole = localStorage.getItem(`role_${supabaseUser.id}`);
+
+        if (!cachedRole) {
+          const { data: userRoleData } = await supabase
+            .from('user_roles')
+            .select('id_rol')
+            .eq('id_user', supabaseUser.id)
+            .single();
+
+          const { data: roleNameData } = await supabase
+            .from('roles')
+            .select('nombre')
+            .eq('id_rol', userRoleData?.id_rol)
+            .single();
+
+          cachedRole = roleNameData?.nombre?.toLowerCase().trim() || null;
+
+          if (cachedRole) {
+            localStorage.setItem(`role_${supabaseUser.id}`, cachedRole);
+            console.log("AuthContext: Rol obtenido y guardado en localStorage:", cachedRole);
+          }
+        }
+
+        setUser({ id: supabaseUser.id, email: supabaseUser.email, role: cachedRole || undefined });
+        setIsAuthenticated(true);
+        setLoading(false);
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setIsAuthenticated(false);
+        setLoading(false);
+        localStorage.clear(); // Limpia todos los roles cacheados al cerrar sesión
+      }
+    });
 
     return () => {
-      authListener.subscription.unsubscribe();
+      listener.subscription.unsubscribe();
     };
   }, []);
 
   const login = (loggedInUser: User) => {
     setUser(loggedInUser);
     setIsAuthenticated(true);
-    console.log("AuthContext: login function called. User:", loggedInUser);
   };
 
   const logout = async () => {
     setLoading(true);
     const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('AuthContext: Error al cerrar sesión:', error.message);
-    }
-    console.log("AuthContext: logout function initiated.");
-  };
-
-  const contextValue: AuthState = {
-    user,
-    isAuthenticated,
-    loading,
-    login,
-    logout,
+    if (error) console.error('AuthContext: Error al cerrar sesión:', error.message);
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>
-      {/* Añade esta parte si tu AuthProvider es el que muestra el Loader2 */}
-      {/* {loading ? (
-        <div className="flex items-center justify-center min-h-screen bg-gray-950 text-white">
-          <Loader2 className="animate-spin mr-3 text-blue-400" size={36} />
-          <p className="text-xl text-blue-400">Cargando autenticación...</p>
-        </div>
-      ) : (
-        children
-      )} */}
-      {children} {/* Usa esta línea si el Loader2 ya lo maneja otra parte, o si no usas Loader2 aquí */}
+    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, logout }}>
+      {children}
     </AuthContext.Provider>
   );
 };
@@ -165,7 +140,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 export const useAuth = (): AuthState => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth debe usarse dentro de AuthProvider');
   }
   return context;
 };
